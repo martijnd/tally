@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 )
@@ -34,10 +35,11 @@ type saveFile struct {
 	Run     *recording
 }
 type session struct {
-	game    *model
-	path    string
-	data    saveFile
-	saveErr error
+	game       *model
+	path       string
+	data       saveFile
+	saveErr    error
+	confirmNew bool
 }
 
 func loadSession(path, seed string, fresh bool) (*session, error) {
@@ -60,8 +62,7 @@ func loadSession(path, seed string, fresh bool) (*session, error) {
 	}
 	r := s.data.Run
 	if fresh || r == nil {
-		r = &recording{Prefs: s.data.Profile.Prefs, Discoveries: len(s.data.Profile.Seen), Seed: seed, UnlockRound: s.data.Profile.Round, Opening: s.data.Profile.Highest}
-		s.data.Run = r
+		r = s.newRecording(seed)
 	}
 	s.game = newModel(r.Seed)
 	s.game.prefs = r.Prefs
@@ -79,6 +80,12 @@ func loadSession(path, seed string, fresh bool) (*session, error) {
 	}
 	s.game.profile = &s.data.Profile
 	return s, nil
+}
+func (s *session) newRecording(seed string) *recording {
+	p := &s.data.Profile
+	r := &recording{Prefs: p.Prefs, Discoveries: len(p.Seen), Seed: seed, UnlockRound: p.Round, Opening: p.Highest}
+	s.data.Run = r
+	return r
 }
 func (s *session) persist() error {
 	dir := filepath.Dir(s.path)
@@ -110,6 +117,9 @@ func (s *session) Init() tea.Cmd {
 	return nil
 }
 func (s *session) View() string {
+	if s.confirmNew {
+		return panel.Padding(1, 2).Render("Replace this run with a new game?\nYour profile and unlocks are kept.\n\nCtrl+N start new game · Esc cancel")
+	}
 	v := s.game.View()
 	if s.saveErr != nil {
 		return v + "\nSave failed · " + s.saveErr.Error()
@@ -117,6 +127,28 @@ func (s *session) View() string {
 	return v
 }
 func (s *session) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if k, ok := msg.(tea.KeyMsg); ok {
+		if k.Type == tea.KeyCtrlN {
+			if !s.confirmNew {
+				s.confirmNew = true
+				return s, nil
+			}
+			s.confirmNew = false
+			r := s.newRecording(fmt.Sprintf("%016x", rand.Uint64()))
+			m := newModel(r.Seed)
+			m.prefs, m.bestDifficulty, m.discoveries, m.unlockRound = r.Prefs, r.Opening, r.Discoveries, r.UnlockRound
+			m.profile = &s.data.Profile
+			s.game = m
+			s.saveErr = s.persist()
+			return s, nil
+		}
+		if s.confirmNew && k.Type != tea.KeyCtrlC {
+			if k.Type == tea.KeyEsc {
+				s.confirmNew = false
+			}
+			return s, nil
+		}
+	}
 	m := s.game
 	oldPrefs := m.prefs
 	before, counts := m.phase, m.timesPlayed

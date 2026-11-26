@@ -101,8 +101,7 @@ func (m *model) randomEdition() int {
 	}
 	return 3
 }
-func (m *model) applySupply(s supply) bool {
-	sel := m.selectedIdx()
+func (s supply) targetCount() (int, int) {
 	lo, hi := 0, 0
 	switch s.Action {
 	case "enhance", "seal", "aura", "duplicate":
@@ -116,6 +115,14 @@ func (m *model) applySupply(s supply) bool {
 		lo, hi = 1, 3
 	case "death":
 		lo, hi = 2, 2
+	}
+	return lo, hi
+}
+func (m *model) applySupply(s supply) bool {
+	sel := m.selectedIdx()
+	lo, hi := s.targetCount()
+	if lo > 0 && len(m.hand) == 0 {
+		return m.failSupply("Use " + s.Name + " during a Blind, when you have cards in hand")
 	}
 	if lo > 0 && (len(sel) < lo || len(sel) > hi) {
 		return m.failSupply(fmt.Sprintf("Select %d–%d cards", lo, hi))

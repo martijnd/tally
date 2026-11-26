@@ -25,13 +25,18 @@ func TestTerminalControls(t *testing.T) {
 		t.Fatal("mouse selected first card")
 	}
 	key("x")
+	key("e")
 	m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if !m.selected[m.cursor] || m.score != 0 || m.phase != phasePlay {
+		t.Fatal("confirm key played the selected hand")
+	}
+	key("a")
 	if m.phase == phaseScoring || m.score == 0 {
 		t.Fatal("instant score")
 	}
 	m.prefs.Speed = 0
 	m.selected[0] = true
-	m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	key("a")
 	m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	if m.phase == phaseScoring {
 		t.Fatal("manual skip")
@@ -174,5 +179,35 @@ func TestLeftHandControls(t *testing.T) {
 	key('a')
 	if m.phase != phaseScoring {
 		t.Fatal("play shortcut failed")
+	}
+}
+
+func TestShopHandOverviewIsReadOnly(t *testing.T) {
+	m := newModel("overview")
+	m.openShop()
+	m.money = 12
+	before := m.levels
+	for _, key := range "gsee" {
+		m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{key}})
+	}
+	if !m.overview || m.levels != before || m.money != 12 {
+		t.Fatal("viewing hands in the shop changed levels or cash")
+	}
+}
+
+func TestTarotTargetAfterChoosingSlot(t *testing.T) {
+	m := newModel("tarot")
+	m.chooseStart()
+	m.startRound()
+	m.bag = []supply{{Name: "Strength", Action: "rank", Value: 1}}
+	key := func(k string) { m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)}) }
+	key("f")
+	key("1")
+	key("w")
+	rank := m.hand[m.cursor].Rank
+	key("x")
+	key("e")
+	if len(m.bag) != 0 || m.hand[m.cursor].Rank != rank%13+1 {
+		t.Fatal("Strength did not apply to the chosen card")
 	}
 }

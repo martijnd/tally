@@ -50,6 +50,7 @@ type reward struct {
 }
 
 type model struct {
+	targetingSlot                        int // One-based consumable slot, or zero when browsing.
 	hidden, playedAnte                   map[int]bool
 	roundTypes                           [len(handBases)]bool
 	forcedID, disabledJoker, trackedAnte int
@@ -71,7 +72,7 @@ type model struct {
 	discardBonus, playBonus, bagBonus            int
 	tagQueue                                     []int
 	doubleTags, freePacks, freeRerolls           int
-	upgrades                                     [16]int
+	upgrades                                     [len(upgradeLines)]int
 	upgradeOffer, packKind, packSize, packPicks  int
 	packSold                                     bool
 	packChoices                                  []packChoice
@@ -117,7 +118,6 @@ type model struct {
 	rerollPrice int
 
 	levels, timesPlayed [len(handBases)]int
-	cursorHand          int
 	overview            bool
 	msg                 string
 }
@@ -615,6 +615,8 @@ func (m *model) winRound() {
 }
 
 func (m *model) openShop() {
+	m.hand, m.selected = nil, nil
+	m.cursor = 0
 	items := supplies()
 	for {
 		it := items[m.shopRNG.IntN(len(items))]

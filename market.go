@@ -17,15 +17,14 @@ const (
 	cabinet
 	dividends
 	resale
-	tuition
 	wholesale
 	binding
 	stipend
 	patience
 )
 
-var upgradeLines = []struct{ Name, Desc string }{
-	{"Shelving", "+1 Joker offer"}, {"Coupon roll", "Rerolls start $1 cheaper"}, {"Savings book", "Interest cap +$5"}, {"Rehearsal", "+1 play"}, {"Wastebasket", "+1 discard"}, {"Folio", "+1 hand size"}, {"Gilding press", "Higher edition chance"}, {"Satchel", "+1 consumable slot"}, {"Cabinet", "+1 Joker slot"}, {"Dividend bond", "Round reward +$2"}, {"Resale license", "Sell Jokers for $1 more"}, {"Tuition grant", "Hand training costs $1 less"}, {"Wholesale license", "Joker purchases cost $1 less"}, {"Bookbinding", "Packs cost $1 less"}, {"Stipend", "Earn $1 entering each shop"}, {"Patience fund", "Unused plays earn $1 more"},
+var upgradeLines = [...]struct{ Name, Desc string }{
+	{"Shelving", "+1 Joker offer"}, {"Coupon roll", "Rerolls start $1 cheaper"}, {"Savings book", "Interest cap +$5"}, {"Rehearsal", "+1 play"}, {"Wastebasket", "+1 discard"}, {"Folio", "+1 hand size"}, {"Gilding press", "Higher edition chance"}, {"Satchel", "+1 consumable slot"}, {"Cabinet", "+1 Joker slot"}, {"Dividend bond", "Round reward +$2"}, {"Resale license", "Sell Jokers for $1 more"}, {"Wholesale license", "Joker purchases cost $1 less"}, {"Bookbinding", "Packs cost $1 less"}, {"Stipend", "Earn $1 entering each shop"}, {"Patience fund", "Unused plays earn $1 more"},
 }
 
 func (m *model) bagSlots() int {

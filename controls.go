@@ -143,16 +143,6 @@ func (m *model) updateResolved(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if m.overview {
-			if key == "enter" && m.phase == phaseShop && m.money >= 4-m.upgrades[tuition] {
-				m.money -= 4 - m.upgrades[tuition]
-				m.levels[m.cursorHand]++
-			}
-			if key == "down" {
-				m.cursorHand = (m.cursorHand + 1) % len(handBases)
-			}
-			if key == "up" {
-				m.cursorHand = (m.cursorHand + len(handBases) - 1) % len(handBases)
-			}
 			return m, nil
 		}
 		switch m.phase {
@@ -214,7 +204,7 @@ func (m *model) updatePlay(key string) tea.Cmd {
 		}
 		m.selected[m.cursor] = !m.selected[m.cursor]
 		m.msg = ""
-	case "a", "enter":
+	case "a":
 		if m.play() {
 			if m.prefs.Speed == 2 {
 				return m.scoreDone()

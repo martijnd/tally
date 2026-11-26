@@ -13,9 +13,10 @@ func TestResumeScoringAndProfile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, k := range []tea.KeyType{tea.KeyEnter, tea.KeyEnter, tea.KeySpace, tea.KeyEnter} {
+	for _, k := range []tea.KeyType{tea.KeyEnter, tea.KeyEnter, tea.KeySpace} {
 		s.Update(tea.KeyMsg{Type: k})
 	}
+	s.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
 	if s.game.phase != phaseScoring || s.game.discards != 4 {
 		t.Fatal("round did not start with selected deck")
 	}
@@ -64,5 +65,30 @@ func TestUnlocksAndStickers(t *testing.T) {
 	m.shopSelect()
 	if len(m.mods) != 2 {
 		t.Fatal("bound modifier sold")
+	}
+}
+
+func TestNewRunShortcutPersists(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "save.json")
+	s, err := loadSession(path, "first", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	press := func(k tea.KeyType) { s.Update(tea.KeyMsg{Type: k}) }
+	press(tea.KeyEnter)
+	press(tea.KeyCtrlN)
+	press(tea.KeyEsc)
+	if s.game.seed != "first" || s.game.phase != phasePreview {
+		t.Fatal("cancel replaced the run")
+	}
+	before := len(s.data.Profile.Seen)
+	press(tea.KeyCtrlN)
+	press(tea.KeyCtrlN)
+	resumed, err := loadSession(path, "unused", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resumed.game.seed == "first" || resumed.game.seed != s.game.seed || resumed.game.phase != phaseStart || resumed.game.discoveries != before {
+		t.Fatal("new run did not persist with the existing profile")
 	}
 }

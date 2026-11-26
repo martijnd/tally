@@ -37,7 +37,7 @@ func TestUpgradeEligibility(t *testing.T) {
 	m := newModel("shop")
 	m.unlockRound = 3
 	m.money = 10000
-	for range 32 {
+	for range 2 * len(upgradeLines) {
 		m.openShop()
 		if m.upgradeOffer < 0 {
 			t.Fatal("missing upgrade")

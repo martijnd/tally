@@ -26,7 +26,7 @@ Clear all eight Antes, each with a Small Blind, Big Blind, and Boss Blind, to wi
 |---|---|
 | w / s or ↑ / ↓ | move |
 | space / x | select card |
-| a / enter | play selected |
+| a | play selected |
 | d | discard selected |
 | t | sort by rank or suit |
 | c | clear selection |
@@ -37,6 +37,7 @@ Clear all eight Antes, each with a Small Blind, Big Blind, and Boss Blind, to wi
 | e / enter while scoring | finish the animation |
 | e | confirm a menu choice or shop purchase |
 | z | open or close the Collection |
+| Ctrl+N twice | start a new run and keep your profile |
 | q | save and quit |
 
 Use the keyboard to play. Press `x` to select a card and `a` to play the selected hand.

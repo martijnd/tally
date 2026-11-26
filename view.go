@@ -133,14 +133,7 @@ func (m *model) View() string {
 		b.WriteString("Hand overview · g to close\n")
 		for i := range handBases {
 			base := trainedBase(HandType(i), m.levels[i])
-			cursor := " "
-			if i == m.cursorHand {
-				cursor = ">"
-			}
-			fmt.Fprintf(&b, "%s %-18s Lv %d   %d × %d   played %d\n", cursor, base.Name, 1+m.levels[i], base.Chips, base.Mult, m.timesPlayed[i])
-		}
-		if m.phase == phaseShop {
-			fmt.Fprintf(&b, "w/s choose · e train ($%d) · wallet $%d", 4-m.upgrades[tuition], m.money)
+			fmt.Fprintf(&b, "%-18s Lv %d   %d × %d   played %d\n", base.Name, 1+m.levels[i], base.Chips, base.Mult, m.timesPlayed[i])
 		}
 		return panel.Padding(1, 2).Render(b.String())
 	}
@@ -178,7 +171,7 @@ func (m *model) viewTable() string {
 	if m.msg != "" {
 		msg = " " + sWarn.Render(m.msg)
 	}
-	help := sDim.Render(" w/s move · space select · a play · d discard · 1/2 shift · t sort · c clear · v deck · z collection · f consumables · g hands · , settings · q quit")
+	help := sDim.Render(" w/s move · space select · a play · d discard · 1/2 shift · t sort · c clear · v deck · z collection · f consumables · g hands · , settings · ctrl+n new game · q quit")
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, m.viewMods(w), msg, help)
 }
 
@@ -430,7 +423,7 @@ func (m *model) viewShop() string {
 	if i := m.upgradeOffer; i >= 0 {
 		fmt.Fprintf(&b, "\nt redeem %s %d Voucher ($%d) · %s", upgradeLines[i].Name, m.upgrades[i]+1, m.upgradePrice(), upgradeLines[i].Desc)
 	}
-	b.WriteString("\n" + sDim.Render(fmt.Sprintf("w/s move · e buy/sell · 1/2 reorder owned · r reroll ($%d) · c next Blind · v deck · z collection · f consumables · g hands · , settings · q quit", m.rerollCharge())))
+	b.WriteString("\n" + sDim.Render(fmt.Sprintf("w/s move · e buy/sell · 1/2 reorder owned · r reroll ($%d) · c next Blind · v deck · z collection · f consumables · g hands · , settings · ctrl+n new game · q quit", m.rerollCharge())))
 	return panel.Padding(1, 2).Render(b.String())
 }
 
@@ -447,6 +440,6 @@ func (m *model) viewEnd() string {
 	if m.phase == phaseWon {
 		b.WriteString("e continue endless\n")
 	}
-	b.WriteString("\n" + sDim.Render("n replay seed · v deck · z collection · f consumables · g hands · , settings · q quit"))
+	b.WriteString("\n" + sDim.Render("n replay seed · v deck · z collection · f consumables · g hands · , settings · ctrl+n new game · q quit"))
 	return panel.Padding(1, 3).Render(b.String())
 }

@@ -36,12 +36,44 @@ func (m *model) inventoryKey(key string) {
 	switch key {
 	case "i", "esc":
 		m.inventory = false
+		m.targetingSlot = 0
 	case "1", "2", "3", "4", "5":
-		m.useSupply(int(key[0] - '1'))
-	case "up", "down", " ":
+		slot := int(key[0] - '0')
+		if slot > len(m.bag) {
+			return
+		}
+		m.targetingSlot = 0
+		lo, hi := m.bag[slot-1].targetCount()
+		n := len(m.selectedIdx())
+		if len(m.hand) > 0 && lo > 0 && (n < lo || n > hi) {
+			m.targetingSlot = slot
+			m.msg = ""
+			return
+		}
+		m.useSupply(slot - 1)
+	case "enter":
+		if m.targetingSlot > 0 {
+			slot := m.targetingSlot
+			before := len(m.bag)
+			m.useSupply(slot - 1)
+			if len(m.bag) < before {
+				m.targetingSlot = 0
+			}
+		}
+	case "up", "down", " ", "x":
 		m.updatePlay(key)
 	case "b":
-		if m.phase == phaseShop && m.stockItem != nil && len(m.bag) < m.bagSlots() && m.money >= 3 {
+		switch {
+		case m.phase != phaseShop:
+			return
+		case m.stockItem == nil:
+			m.msg = "Consumable sold out"
+		case len(m.bag) >= m.bagSlots():
+			m.msg = "Consumable slots full"
+		case m.money < 3:
+			m.msg = "Need $3 to buy this consumable"
+		default:
+			m.msg = "Bought " + m.stockItem.Name
 			m.money -= 3
 			m.bag = append(m.bag, *m.stockItem)
 			m.stockItem = nil
@@ -68,6 +100,15 @@ func (m *model) inventoryView() string {
 		}
 		fmt.Fprintf(&b, "%s [%s] %s\n", marker, map[bool]string{true: "x", false: " "}[m.selected[i]], label)
 	}
-	fmt.Fprintf(&b, "w/s target · space select · number use · f close\n%s", m.msg)
+	if m.targetingSlot > 0 {
+		it := m.bag[m.targetingSlot-1]
+		lo, hi := it.targetCount()
+		fmt.Fprintf(&b, "%s · select %d to %d cards · w/s move · x select · e use · f close\n%s", it.Name, lo, hi, m.msg)
+		return panel.Padding(1, 2).Render(b.String())
+	}
+	if len(m.hand) > 0 {
+		b.WriteString("w/s target · space/x select · ")
+	}
+	fmt.Fprintf(&b, "number use · f close\n%s", m.msg)
 	return panel.Padding(1, 2).Render(b.String())
 }

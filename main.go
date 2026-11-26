@@ -48,7 +48,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	p := tea.NewProgram(s, tea.WithAltScreen(), tea.WithMouseCellMotion())
+	p := tea.NewProgram(s, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

@@ -83,8 +83,6 @@ func (m *model) updateResolved(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}()
 	switch msg := msg.(type) {
-	case tea.MouseMsg:
-		return m, m.mouse(msg)
 	case tickMsg:
 		if m.phase == phaseScoring {
 			return m, m.advanceScoring()

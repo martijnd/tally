@@ -21,9 +21,10 @@ func TestTerminalControls(t *testing.T) {
 	m.chooseStart()
 	m.startRound()
 	m.Update(tea.MouseMsg{X: 3, Y: 4, Button: tea.MouseButtonLeft, Action: tea.MouseActionPress})
-	if !m.selected[0] {
-		t.Fatal("mouse did not select first card")
+	if m.selected[0] {
+		t.Fatal("mouse selected first card")
 	}
+	key("x")
 	m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	if m.phase == phaseScoring || m.score == 0 {
 		t.Fatal("instant score")

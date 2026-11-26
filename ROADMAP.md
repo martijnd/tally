@@ -114,7 +114,7 @@ Status: `[x]` done, `[ ]` to do.
 - [x] Deck viewer: remaining and full deck, grouped by suit, with modifications
 - [x] Run info screen: hand levels, boss list, upgrades owned
 - [x] Modifier and consumable detail on hover or cursor
-- [x] Mouse support
+- [x] Keyboard-only controls
 - [x] Faster or skippable scoring animation, configurable speed
 - [x] Rearrange cards in hand by hand, not only sort
 - [x] Big-number formatting for endless mode (1.2e15 and up)

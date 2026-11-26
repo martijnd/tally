@@ -39,7 +39,7 @@ Clear all eight Antes, each with a Small Blind, Big Blind, and Boss Blind, to wi
 | z | open or close the Collection |
 | q | save and quit |
 
-Click a card to select it, or click the score panel to play. The scroll wheel moves the cursor.
+Use the keyboard to play. Press `x` to select a card and `a` to play the selected hand.
 
 ## Development
 

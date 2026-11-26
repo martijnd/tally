@@ -35,5 +35,30 @@ func (m *model) deckView() string {
 			b.WriteByte(' ')
 		}
 	}
+	fmt.Fprintf(&b, "\n\nJokers %d/%d", len(m.mods), m.modSlots())
+	if len(m.mods) == 0 {
+		b.WriteString("\nNo Jokers")
+	}
+	for i, mod := range m.mods {
+		rule := m.boss().Rule
+		if rule == "acorn" {
+			b.WriteString("\n◆ ??")
+			continue
+		}
+		fmt.Fprintf(&b, "\n◆ %s", mod.Name)
+		if rule == "heart" && i == m.disabledJoker {
+			b.WriteString(" (disabled)")
+		}
+		if mod.Counter > 0 {
+			fmt.Fprintf(&b, " (+%d)", mod.Counter)
+		}
+		if mod.Edition > 0 {
+			fmt.Fprintf(&b, " [%s]", editions[mod.Edition])
+		}
+		if mod.Sticker != "" {
+			fmt.Fprintf(&b, " [%s]", mod.Sticker)
+		}
+		fmt.Fprintf(&b, " · %s", mod.Desc)
+	}
 	return panel.Padding(1, 2).Render(b.String())
 }

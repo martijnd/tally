@@ -90,7 +90,7 @@ func loadSession(path, seed string, fresh bool) (*session, error) {
 	s.game.unlockRound = r.UnlockRound
 	for _, in := range r.Inputs {
 		if in.Mouse != nil {
-			s.game.Update(*in.Mouse)
+			s.game.replayMouse(*in.Mouse)
 		} else if in.Key != nil {
 			if s.data.Version == 1 {
 				switch in.Key.String() {
@@ -169,14 +169,6 @@ func (s *session) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.profile = &s.data.Profile
 	write := false
 	switch v := msg.(type) {
-	case tea.MouseMsg:
-		if v.Action != tea.MouseActionPress {
-			return s, cmd
-		}
-		write = true
-		if r != nil {
-			r.Inputs = append(r.Inputs, input{Mouse: &v})
-		}
 	case tea.KeyMsg:
 		write = true
 		if r != nil && v.String() != "q" && v.String() != "ctrl+c" && !(m.phase == phaseStart && (before == phaseWon || before == phaseLost)) {

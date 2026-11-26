@@ -47,7 +47,8 @@ func (m *model) scoreDone() tea.Cmd {
 	}
 	return nil
 }
-func (m *model) mouse(e tea.MouseMsg) tea.Cmd {
+// replayMouse restores actions from older saved runs.
+func (m *model) replayMouse(e tea.MouseMsg) tea.Cmd {
 	if e.Action != tea.MouseActionPress {
 		return nil
 	}

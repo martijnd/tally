@@ -46,3 +46,5 @@ Use the keyboard to play. Press `x` to select a card and `a` to play the selecte
 Run `go test ./...` to check the rules and terminal controls. Use `go run . -simulate 3000 -seed audit` for a repeatable balance report with round reach and results by starting Joker. The simulated player buys affordable Jokers and plays for base hand value.
 
 Run `make release` to build macOS and Linux binaries for Intel and ARM64, plus Windows for x86-64, in `dist/`.
+
+To publish a release, tag the commit (for example, `git tag v0.1.1`) and push that tag with `git push origin v0.1.1`. GitHub Actions runs the tests, builds all five executables, and attaches them to a release with generated notes.

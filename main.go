@@ -21,7 +21,7 @@ func main() {
 	seed := flag.String("seed", "", "replay a named seed")
 	daily := flag.Bool("daily", false, "play today's shared UTC seed")
 	fresh := flag.Bool("new", false, "start a fresh run and keep your profile")
-	runs := flag.Int("simulate", 0, "simulate seeded runs and report progression by modifier")
+	runs := flag.Int("simulate", 0, "simulate seeded runs and report progression by Joker")
 	flag.Parse()
 	if *runs > 0 {
 		simulate(os.Stdout, *runs, *seed)

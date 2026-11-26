@@ -73,10 +73,10 @@ func expandedCatalog() []Modifier {
 		}
 	}
 	specials := []Modifier{
-		{Name: "Counterproof", Desc: "Copy the scoring effect of the next modifier", Copy: true, Rarity: 3},
+		{Name: "Counterproof", Desc: "Copy the scoring effect of the next Joker", Copy: true, Rarity: 3},
 		{Name: "Loaded Die", Desc: "Double effect odds", Effect: "odds", Rarity: 2},
-		{Name: "Night School", Desc: "Create a lesson at round start", Trigger: "start", Effect: "lesson", Rarity: 1},
-		{Name: "School Trip", Desc: "Create a lesson on shop entry", Trigger: "shop", Effect: "lesson", Rarity: 1},
+		{Name: "Night School", Desc: "Create a Planet card at round start", Trigger: "start", Effect: "lesson", Rarity: 1},
+		{Name: "School Trip", Desc: "Create a Planet card on shop entry", Trigger: "shop", Effect: "lesson", Rarity: 1},
 		{Name: "Appendix", Desc: "Add a random card at round end", Trigger: "end", Effect: "add", Rarity: 2},
 		{Name: "Loose Insert", Desc: "Add a random card on reroll", Trigger: "reroll", Effect: "add", Rarity: 2},
 		{Name: "Paper Mill", Desc: "Destroy a random undrawn card on discard", Trigger: "discard", Effect: "destroy", Rarity: 2},
@@ -88,7 +88,7 @@ func expandedCatalog() []Modifier {
 			desc := "1 in 4 chance for $4"
 			if i == 1 {
 				effect = "scholarship"
-				desc = "1 in 4 chance to create a lesson"
+				desc = "1 in 4 chance to create a Planet card"
 			}
 			specials = append(specials, Modifier{Name: trigger.Name + " " + kind, Desc: desc + " on " + trigger.Event, Trigger: trigger.Event, Effect: effect, Rarity: 1 + i})
 		}

@@ -9,16 +9,16 @@ import (
 type startingDeck struct{ Name, Rule string }
 
 var startingDecks = []startingDeck{
-	{"Ledger", "Standard 52-card deck"}, {"Draft", "One extra discard"}, {"Treasury", "Start with $10 extra"}, {"Courier", "One extra supply slot"}, {"Republic", "No court cards"}, {"Duplex", "Two suits, one per colour"}, {"Collage", "Every card starts enhanced"}, {"Gallery", "One extra modifier slot"}, {"Panorama", "One extra card in hand"}, {"Encore", "One extra play"}, {"Primer", "Pairs start at level three"}, {"Proof", "Begin with a copying tool"}, {"Mint", "Aces have Mint seals"}, {"Workshop", "Start with Ember"}, {"Thrift", "Rerolls start $1 cheaper"},
+	{"Ledger", "Standard 52-card deck"}, {"Draft", "One extra discard"}, {"Treasury", "Start with $10 extra"}, {"Courier", "One extra consumable slot"}, {"Republic", "No court cards"}, {"Duplex", "Two suits, one per colour"}, {"Collage", "Every card starts enhanced"}, {"Gallery", "One extra Joker slot"}, {"Panorama", "One extra card in hand"}, {"Encore", "One extra hand"}, {"Primer", "Pairs start at level three"}, {"Proof", "Begin with a copying tool"}, {"Mint", "Aces have Mint seals"}, {"Workshop", "Start with Ember"}, {"Thrift", "Rerolls start $1 cheaper"},
 }
 
 type challenge struct{ Name, Mod, Rule string }
 
 var challenges = []challenge{
-	{"One Shot", "Last Call", "single play"}, {"Small Purse", "Stockpile", "cash cap"}, {"Close Quarters", "Ember", "small hand"}, {"One Drawer", "Twins", "single slot"}, {"Final Draft", "Momentum", "no discards"}, {"Long Week", "Wide Net", "high targets"}, {"Cash Only", "Stockpile", "no interest"}, {"Unopened Mail", "Odd Ones Out", "no supplies"}, {"Uncut Sheet", "Even Keel", "no skips"}, {"Private Press", "Small Change", "no packs"},
+	{"One Shot", "Last Call", "single play"}, {"Small Purse", "Stockpile", "cash cap"}, {"Close Quarters", "Ember", "small hand"}, {"One Drawer", "Twins", "single slot"}, {"Final Draft", "Momentum", "no discards"}, {"Long Week", "Wide Net", "high targets"}, {"Cash Only", "Stockpile", "no interest"}, {"Unopened Mail", "Odd Ones Out", "no consumables"}, {"Uncut Sheet", "Even Keel", "no skips"}, {"Private Press", "Small Change", "no packs"},
 	{"Last Dance", "Last Call", "no rerolls"}, {"Narrow Gauge", "Twins", "small hand"}, {"Thin Margins", "Momentum", "cash cap"}, {"Sealed Room", "Wide Net", "single slot"}, {"First Edition", "Odd Ones Out", "high targets"}, {"One Take", "Ember", "single play"}, {"Loose Change", "Small Change", "no interest"}, {"Fixed Stock", "Even Keel", "no rerolls"}, {"Full Commitment", "Last Call", "no skips"}, {"House Rules", "Momentum", "no packs"},
 }
-var difficultyRules = []string{"Standard", "No opening-round reward", "Steeper targets", "Bound modifiers appear", "One fewer discard", "Expiring modifiers appear", "Reduced interest", "Rent stickers and steeper targets"}
+var difficultyRules = []string{"Standard", "No Small Blind reward", "Steeper targets", "Eternal Jokers appear", "One fewer discard", "Perishable Jokers appear", "Reduced interest", "Rental stickers and steeper targets"}
 
 func (m *model) restriction(rule string) bool {
 	return m.challengeID > 0 && challenges[m.challengeID-1].Rule == rule
@@ -113,14 +113,14 @@ func (m *model) startView() string {
 		}
 		fmt.Fprintf(&b, "%s %-12s %s\n", mark, d.Name, rule)
 	}
-	fmt.Fprintf(&b, "\nDifficulty %d · %s\n", m.difficulty+1, difficultyRules[m.difficulty])
+	fmt.Fprintf(&b, "\n%s Stake · %s\n", stakeNames[m.difficulty], difficultyRules[m.difficulty])
 	if m.challengeID == 0 {
 		b.WriteString("Standard run\n")
 	} else {
 		c := challenges[m.challengeID-1]
 		fmt.Fprintf(&b, "%s · start with %s · %s\n", c.Name, c.Mod, c.Rule)
 	}
-	b.WriteString("↑↓ deck · ←→ difficulty · c challenge · enter start · a collection · , settings")
+	b.WriteString("↑↓ deck · ←→ stake · c challenge · enter start · a collection · , settings")
 	return panel.Padding(1, 2).Render(b.String())
 }
 func (m *model) roundReward() int {
@@ -145,7 +145,7 @@ func (m *model) stickerOffer(mod *Modifier) {
 		mod.Sticker = "Rent"
 	}
 	if mod.Sticker != "" {
-		mod.Desc = mod.Sticker + " · " + mod.Desc
+		mod.Desc = map[string]string{"Bound": "Eternal", "Fading": "Perishable", "Rent": "Rental"}[mod.Sticker] + " · " + mod.Desc
 	}
 }
 func (m *model) settleStickers() {

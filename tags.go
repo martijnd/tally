@@ -11,10 +11,10 @@ type tag struct {
 }
 
 var tags = []tag{
-	{"Payroll", "Collect $5 immediately", "skip", "cash", 5}, {"Deferred wage", "Collect $9 in the next shop", "shop", "cash", 9}, {"Settlement", "Collect $12 after clearing a round", "win", "cash", 12}, {"Toll slip", "Next shop reroll costs $0", "reroll", "free", 0}, {"First refusal", "Next shop modifier is free", "offer", "free", 0}, {"Parcel", "Next booster pack is free", "pack", "free", 0}, {"Carbon sheet", "Apply the next earned tag twice", "skip", "double", 0},
-	{"Etcher", "Etch the next shop modifier", "offer", "edition", 1}, {"Kiln", "Flare the next shop modifier", "offer", "edition", 2}, {"Polisher", "Mirror the next shop modifier", "offer", "edition", 3}, {"Annex", "Next shop modifier is spacious", "offer", "edition", 4},
-	{"Overtime", "One extra play next round", "round", "play", 1}, {"Sorting tray", "Two extra discards next round", "round", "discard", 2}, {"Shift pay", "Collect $6 at next round start", "round", "cash", 6},
-	{"Pocket manual", "Receive a hand lesson when space permits", "shop", "lesson", 1}, {"Dividend slip", "Collect $1 per owned modifier next shop", "shop", "owned", 1}, {"Headcount", "Collect $2 per unused play next win", "win", "plays", 2},
+	{"Payroll", "Collect $5 immediately", "skip", "cash", 5}, {"Deferred wage", "Collect $9 in the next shop", "shop", "cash", 9}, {"Settlement", "Collect $12 after clearing a round", "win", "cash", 12}, {"Toll slip", "Next shop reroll costs $0", "reroll", "free", 0}, {"First refusal", "Next shop Joker is free", "offer", "free", 0}, {"Parcel", "Next booster pack is free", "pack", "free", 0}, {"Carbon sheet", "Apply the next earned tag twice", "skip", "double", 0},
+	{"Etcher", "Etch the next shop Joker", "offer", "edition", 1}, {"Kiln", "Flare the next shop Joker", "offer", "edition", 2}, {"Polisher", "Mirror the next shop Joker", "offer", "edition", 3}, {"Annex", "Next shop Joker is spacious", "offer", "edition", 4},
+	{"Overtime", "One extra hand next round", "round", "play", 1}, {"Sorting tray", "Two extra discards next round", "round", "discard", 2}, {"Shift pay", "Collect $6 at next round start", "round", "cash", 6},
+	{"Pocket manual", "Receive a Planet card when space permits", "shop", "lesson", 1}, {"Dividend slip", "Collect $1 per owned Joker next shop", "shop", "owned", 1}, {"Headcount", "Collect $2 per unused play next win", "win", "plays", 2},
 	{"Pair seminar", "Train pair immediately", "skip", "level", int(Pair)}, {"Survey", "Train high card immediately", "skip", "level", int(HighCard)}, {"Sequence chart", "Train straight immediately", "skip", "level", int(Straight)}, {"Colour wheel", "Train flush immediately", "skip", "level", int(Flush)}, {"Triplicate", "Train three of a kind immediately", "skip", "level", int(ThreeKind)},
 	{"Night class", "Train full house on next win", "win", "level", int(FullHouse)}, {"Tuition refund", "Gain $4 on next reroll", "reroll", "cash", 4},
 }

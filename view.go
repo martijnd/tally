@@ -124,7 +124,7 @@ func (m *model) View() string {
 				fmt.Fprintf(&b, "%s %d · ", upgradeLines[i].Name, n)
 			}
 		}
-		b.WriteString("\nBosses · ")
+		b.WriteString("\nBoss Blinds · ")
 		for i := 0; i <= m.round/3; i++ {
 			boss := m.stageBoss(i)
 			fmt.Fprintf(&b, "%d %s  ", i+1, boss.Name)
@@ -166,7 +166,7 @@ func (m *model) viewTable() string {
 	w := lipgloss.Width(body)
 
 	header := spread(
-		sAccent.Render(" tally")+sDim.Render(fmt.Sprintf("  stage %d/8 · %s", m.round/3+1, roundNames[m.round%3]+" "+m.boss().Name)),
+		sAccent.Render(" tally")+sDim.Render(fmt.Sprintf("  Ante %d/8 · %s", m.round/3+1, roundNames[m.round%3]+" "+m.boss().Name)),
 		sDim.Render("target ")+sBold.Render(commas(m.target()))+" ",
 		w,
 	)
@@ -178,7 +178,7 @@ func (m *model) viewTable() string {
 	if m.msg != "" {
 		msg = " " + sWarn.Render(m.msg)
 	}
-	help := sDim.Render(" ↑↓ move · space select · p play · d discard · [ ] shift · s sort · c clear · v deck · i supplies · h hands · , settings · q quit")
+	help := sDim.Render(" ↑↓ move · space select · p play · d discard · [ ] shift · s sort · c clear · v deck · i consumables · h hands · , settings · q quit")
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, m.viewMods(w), msg, help)
 }
 
@@ -225,7 +225,7 @@ func (m *model) viewHand() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(sDim.Render("plays ") + pips(m.plays, max(m.plays, playsPerRound+m.upgrades[rehearsal]), cAccent) +
+	b.WriteString(sDim.Render("hands ") + pips(m.plays, max(m.plays, playsPerRound+m.upgrades[rehearsal]), cAccent) +
 		sDim.Render("   discards ") + pips(m.discards, max(m.discards, discardsPerRound+m.upgrades[wastebasket]), cWarn))
 	return b.String()
 }
@@ -376,7 +376,7 @@ func (m *model) viewShop() string {
 		b.WriteString("    " + sDim.Render(desc) + "\n")
 	}
 
-	b.WriteString(sDim.Render("FOR SALE") + "\n")
+	b.WriteString(sDim.Render("JOKERS FOR SALE") + "\n")
 	if len(m.offers) == 0 {
 		b.WriteString(sDim.Render("  sold out, r to reroll") + "\n")
 	}
@@ -388,7 +388,7 @@ func (m *model) viewShop() string {
 		row(i, mod.Name, fmt.Sprintf("$%d", mod.Price), mod.Desc, ps)
 	}
 
-	b.WriteString("\n" + sDim.Render(fmt.Sprintf("OWNED %d/%d", len(m.mods), m.modSlots())) + "\n")
+	b.WriteString("\n" + sDim.Render(fmt.Sprintf("JOKERS %d/%d", len(m.mods), m.modSlots())) + "\n")
 	if len(m.mods) == 0 {
 		b.WriteString(sDim.Render("  nothing yet") + "\n")
 	}
@@ -404,15 +404,15 @@ func (m *model) viewShop() string {
 		b.WriteString("\n" + sWarn.Render(m.msg) + "\n")
 	}
 	if m.stockItem != nil {
-		fmt.Fprintf(&b, "\ni supplies · %s ($3)", m.stockItem.Name)
+		fmt.Fprintf(&b, "\ni consumables · %s ($3)", m.stockItem.Name)
 	}
 	if !m.packSold {
 		fmt.Fprintf(&b, "\nb open %s %s pack ($%d)", packSizes[m.packSize], packKinds[m.packKind], m.packPrice())
 	}
 	if i := m.upgradeOffer; i >= 0 {
-		fmt.Fprintf(&b, "\nu buy %s %d ($%d) · %s", upgradeLines[i].Name, m.upgrades[i]+1, m.upgradePrice(), upgradeLines[i].Desc)
+		fmt.Fprintf(&b, "\nu redeem %s %d Voucher ($%d) · %s", upgradeLines[i].Name, m.upgrades[i]+1, m.upgradePrice(), upgradeLines[i].Desc)
 	}
-	b.WriteString("\n" + sDim.Render(fmt.Sprintf("↑↓ move · enter buy/sell · [ ] reorder owned · r reroll ($%d) · c next round · v deck · i supplies · h hands · , settings · q quit", m.rerollCharge())))
+	b.WriteString("\n" + sDim.Render(fmt.Sprintf("↑↓ move · enter buy/sell · [ ] reorder owned · r reroll ($%d) · c next Blind · v deck · i consumables · h hands · , settings · q quit", m.rerollCharge())))
 	return panel.Padding(1, 2).Render(b.String())
 }
 
@@ -420,15 +420,15 @@ func (m *model) viewEnd() string {
 	var b strings.Builder
 	if m.phase == phaseWon {
 		b.WriteString(sGood.Render(fmt.Sprintf("all %d rounds cleared", numRounds)) + "\n\n")
-		b.WriteString(sText.Render(fmt.Sprintf("finished with $%d and %d modifiers", m.money, len(m.mods))) + "\n")
+		b.WriteString(sText.Render(fmt.Sprintf("finished with $%d and %d Jokers", m.money, len(m.mods))) + "\n")
 	} else {
-		b.WriteString(sBad.Render("out of plays") + "\n\n")
+		b.WriteString(sBad.Render("out of hands") + "\n\n")
 		b.WriteString(sText.Render(fmt.Sprintf("round %d: %s / %s", m.round+1, commas(m.score), commas(m.target()))) + "\n")
 	}
-	fmt.Fprintf(&b, "\nBest play %s · rounds skipped %d\n", commas(m.bestGain), m.skipped)
+	fmt.Fprintf(&b, "\nBest play %s · Blinds skipped %d\n", commas(m.bestGain), m.skipped)
 	if m.phase == phaseWon {
 		b.WriteString("e continue endless\n")
 	}
-	b.WriteString("\n" + sDim.Render("n replay seed · v deck · i supplies · h hands · , settings · q quit"))
+	b.WriteString("\n" + sDim.Render("n replay seed · v deck · i consumables · h hands · , settings · q quit"))
 	return panel.Padding(1, 3).Render(b.String())
 }

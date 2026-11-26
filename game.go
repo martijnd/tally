@@ -466,7 +466,7 @@ func (m *model) discard() {
 func (m *model) winRound() {
 	m.rewards = []reward{{"round cleared", m.roundReward()}}
 	if m.plays > 0 {
-		m.rewards = append(m.rewards, reward{fmt.Sprintf("%d unused plays", m.plays), m.plays * (1 + m.upgrades[patience])})
+		m.rewards = append(m.rewards, reward{fmt.Sprintf("%d unused hands", m.plays), m.plays * (1 + m.upgrades[patience])})
 	}
 	divisor := 5
 	if m.difficulty >= 6 {
@@ -564,7 +564,7 @@ func (m *model) shopSelect() {
 		i := m.shopCursor - len(m.offers)
 		mod := m.mods[i]
 		if mod.Sticker == "Bound" {
-			m.msg = "Bound modifiers cannot be sold"
+			m.msg = "Eternal Jokers cannot be sold"
 			return
 		}
 		m.money += sellPrice(mod) + m.upgrades[resale]

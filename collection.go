@@ -32,7 +32,7 @@ func (m *model) collectionView() string {
 	if p == nil {
 		p = &profile{}
 	}
-	groups := []string{"Decks", "Modifiers", "Supplies", "Upgrades", "Bosses", "Tags", "Hands", "Enhancements", "Editions", "Seals", "Challenges"}
+	groups := []string{"Decks", "Jokers", "Consumables", "Vouchers", "Boss Blinds", "Tags", "Hands", "Enhancements", "Editions", "Seals", "Challenges"}
 	var names []string
 	switch m.collectionGroup {
 	case 0:
@@ -91,7 +91,7 @@ func (m *model) collectionView() string {
 		for d, n := range deck {
 			if n > 0 {
 				wins += n
-				fmt.Fprintf(&b, "%s · difficulty %d · %d wins\n", startingDecks[i].Name, d+1, n)
+				fmt.Fprintf(&b, "%s · %s Stake · %d wins\n", startingDecks[i].Name, stakeNames[d], n)
 			}
 		}
 	}

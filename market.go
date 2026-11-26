@@ -25,11 +25,11 @@ const (
 )
 
 var upgradeLines = []struct{ Name, Desc string }{
-	{"Shelving", "+1 modifier offer"}, {"Coupon roll", "Rerolls start $1 cheaper"}, {"Savings book", "Interest cap +$5"}, {"Rehearsal", "+1 play"}, {"Wastebasket", "+1 discard"}, {"Folio", "+1 hand size"}, {"Gilding press", "Higher edition chance"}, {"Satchel", "+1 consumable slot"}, {"Cabinet", "+1 modifier slot"}, {"Dividend bond", "Round reward +$2"}, {"Resale license", "Sell modifiers for $1 more"}, {"Tuition grant", "Hand training costs $1 less"}, {"Wholesale license", "Modifier purchases cost $1 less"}, {"Bookbinding", "Packs cost $1 less"}, {"Stipend", "Earn $1 entering each shop"}, {"Patience fund", "Unused plays earn $1 more"},
+	{"Shelving", "+1 Joker offer"}, {"Coupon roll", "Rerolls start $1 cheaper"}, {"Savings book", "Interest cap +$5"}, {"Rehearsal", "+1 play"}, {"Wastebasket", "+1 discard"}, {"Folio", "+1 hand size"}, {"Gilding press", "Higher edition chance"}, {"Satchel", "+1 consumable slot"}, {"Cabinet", "+1 Joker slot"}, {"Dividend bond", "Round reward +$2"}, {"Resale license", "Sell Jokers for $1 more"}, {"Tuition grant", "Hand training costs $1 less"}, {"Wholesale license", "Joker purchases cost $1 less"}, {"Bookbinding", "Packs cost $1 less"}, {"Stipend", "Earn $1 entering each shop"}, {"Patience fund", "Unused plays earn $1 more"},
 }
 
 func (m *model) bagSlots() int {
-	if m.restriction("no supplies") {
+	if m.restriction("no consumables") {
 		return 0
 	}
 	return 2 + m.upgrades[satchel] + m.bagBonus
@@ -58,7 +58,7 @@ func (m *model) buyUpgrade() {
 	}
 	cost := m.upgradePrice()
 	if m.money < cost {
-		m.msg = "Not enough money for upgrade"
+		m.msg = "Not enough money for Voucher"
 		return
 	}
 	m.money -= cost
@@ -67,7 +67,7 @@ func (m *model) buyUpgrade() {
 	m.msg = "Bought " + upgradeLines[i].Name
 }
 
-var packKinds = []string{"Workshop", "Playing cards", "Lessons", "Editing tools", "Bargains"}
+var packKinds = []string{"Buffoon", "Standard", "Celestial", "Arcana", "Spectral"}
 var packSizes = []string{"Normal", "Jumbo", "Mega"}
 
 type packChoice struct {
@@ -83,7 +83,7 @@ func (p packChoice) label() string {
 	if p.card != nil {
 		return cardTag(*p.card) + " · " + enhancements[p.card.Enhancement]
 	}
-	return p.item.Name + " · " + p.item.Description
+	return p.item.Name + " · " + p.item.cardFamily() + " card · " + p.item.Description
 }
 func (m *model) packPrice() int {
 	if m.freePacks > 0 {
@@ -162,7 +162,7 @@ func (m *model) pickPack(key string) {
 	switch {
 	case p.mod != nil:
 		if len(m.mods) >= m.modSlots() {
-			m.msg = "Modifier slots full"
+			m.msg = "Joker slots full"
 			return
 		}
 		m.mods = append(m.mods, p.mod)

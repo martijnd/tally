@@ -51,16 +51,16 @@ type bargain struct {
 
 var bargains = []bargain{
 	{"Deep Pocket", "Gain one hand space", "space", 1, "wallet"},
-	{"Broad Shelf", "Gain one modifier slot", "slot", 1, "wallet"},
+	{"Broad Shelf", "Gain one Joker slot", "slot", 1, "wallet"},
 	{"Lost Receipt", "Gain $18", "cash", 18, "card"},
 	{"Missing Page", "Train all hands once", "train", 1, "card"},
 	{"Empty Purse", "Train all hands twice", "train", 2, "wallet"},
-	{"Bent Frame", "Gain a modifier slot", "slot", 1, "card"},
+	{"Bent Frame", "Gain a Joker slot", "slot", 1, "card"},
 	{"Loose Leaf", "Gain one hand space", "space", 1, "card"},
 	{"Silent Auction", "Gain $24", "cash", 24, "modifier"},
 	{"Last Lecture", "Train all hands twice", "train", 2, "modifier"},
 	{"Open Vault", "Gain two hand spaces", "space", 2, "modifier"},
-	{"Wide Margin", "Gain two modifier slots", "slot", 2, "modifier"},
+	{"Wide Margin", "Gain two Joker slots", "slot", 2, "modifier"},
 	{"Copper Bath", "Etch selected cards", "edition", 1, "wallet"},
 	{"Hot Press", "Flare selected cards", "edition", 2, "wallet"},
 	{"Mirror Bath", "Mirror selected cards", "edition", 3, "wallet"},
@@ -84,7 +84,7 @@ func (m *model) strikeBargain(b bargain) bool {
 		}
 	case "modifier":
 		if len(m.mods) == 0 {
-			m.msg = "Requires an owned modifier"
+			m.msg = "Requires an owned Joker"
 			return false
 		}
 	}

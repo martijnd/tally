@@ -19,7 +19,7 @@ func supplies() []supply {
 		{"Descending Ink", "Lower selected ranks", "rank", -1},
 		{"Bridge Stamp", "Advance selected ranks by three", "rank", 3},
 		{"Overprint", "Gain $5", "money", 5},
-		{"Proof Slip", "Create a random hand lesson", "lesson", 0},
+		{"Proof Slip", "Create a random Planet card", "lesson", 0},
 		{"Quiet Writ", "Disable the active boss for this round", "silence", 0},
 	}
 	for i, name := range []string{"Spade Plate", "Heart Plate", "Diamond Plate", "Club Plate"} {
@@ -32,7 +32,7 @@ func supplies() []supply {
 		out = append(out, supply{name + " Press", "Apply " + name + " seal to selected cards", "seal", i + 1})
 	}
 	for i, b := range bargains {
-		out = append(out, supply{b.Name, b.Desc + " · sacrifice " + map[string]string{"wallet": "all money", "card": "a random playing card", "modifier": "a random modifier"}[b.Cost], "bargain", i})
+		out = append(out, supply{b.Name, b.Desc + " · sacrifice " + map[string]string{"wallet": "all money", "card": "a random playing card", "modifier": "a random Joker"}[b.Cost], "bargain", i})
 	}
 	for i, b := range handBases {
 		out = append(out, supply{"Study of " + b.Name, "Raise " + b.Name + " one level", "level", i})
@@ -154,12 +154,12 @@ func (m *model) inventoryKey(key string) {
 }
 func (m *model) inventoryView() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Supplies %d/%d · $%d\n", len(m.bag), m.bagSlots(), m.money)
+	fmt.Fprintf(&b, "Consumables %d/%d · $%d\n", len(m.bag), m.bagSlots(), m.money)
 	for i, it := range m.bag {
-		fmt.Fprintf(&b, "%d  %s · %s\n", i+1, it.Name, it.Description)
+		fmt.Fprintf(&b, "%d  %s · %s card · %s\n", i+1, it.Name, it.cardFamily(), it.Description)
 	}
 	if m.phase == phaseShop && m.stockItem != nil {
-		fmt.Fprintf(&b, "b buy %s ($3) · %s\n", m.stockItem.Name, m.stockItem.Description)
+		fmt.Fprintf(&b, "b buy %s ($3) · %s card · %s\n", m.stockItem.Name, m.stockItem.cardFamily(), m.stockItem.Description)
 	}
 	for i, c := range m.hand {
 		marker := " "

@@ -97,6 +97,9 @@ func (m *model) currentEvent() (Event, bool) {
 }
 
 func (m *model) View() string {
+	if len(m.packChoices) > 0 {
+		return m.packView()
+	}
 	if m.viewingDeck {
 		return m.deckView()
 	}
@@ -105,7 +108,17 @@ func (m *model) View() string {
 	}
 	if m.overview {
 		var b strings.Builder
-		fmt.Fprintf(&b, "Seed %q\n", m.seed)
+		fmt.Fprintf(&b, "Seed %q%s\n", m.seed, m.tagSummary())
+		for i, n := range m.upgrades {
+			if n > 0 {
+				fmt.Fprintf(&b, "%s %d · ", upgradeLines[i].Name, n)
+			}
+		}
+		b.WriteString("\nBosses · ")
+		for i, boss := range m.bosses[:min(len(m.bosses), m.round/3+1)] {
+			fmt.Fprintf(&b, "%d %s  ", i+1, boss.Name)
+		}
+		b.WriteString("\n")
 		b.WriteString("Hand overview · h to close\n")
 		for i := range handBases {
 			base := trainedBase(HandType(i), m.levels[i])
@@ -116,7 +129,7 @@ func (m *model) View() string {
 			fmt.Fprintf(&b, "%s %-18s Lv %d   %d × %d   played %d\n", cursor, base.Name, 1+m.levels[i], base.Chips, base.Mult, m.timesPlayed[i])
 		}
 		if m.phase == phaseShop {
-			fmt.Fprintf(&b, "↑↓ choose · enter train ($4) · wallet $%d", m.money)
+			fmt.Fprintf(&b, "↑↓ choose · enter train ($%d) · wallet $%d", 4-m.upgrades[tuition], m.money)
 		}
 		return panel.Padding(1, 2).Render(b.String())
 	}
@@ -196,8 +209,8 @@ func (m *model) viewHand() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(sDim.Render("plays ") + pips(m.plays, playsPerRound, cAccent) +
-		sDim.Render("   discards ") + pips(m.discards, discardsPerRound, cWarn))
+	b.WriteString(sDim.Render("plays ") + pips(m.plays, max(m.plays, playsPerRound+m.upgrades[rehearsal]), cAccent) +
+		sDim.Render("   discards ") + pips(m.discards, max(m.discards, discardsPerRound+m.upgrades[wastebasket]), cWarn))
 	return b.String()
 }
 
@@ -368,13 +381,22 @@ func (m *model) viewShop() string {
 		if mod.Counter > 0 {
 			name += fmt.Sprintf(" (+%d)", mod.Counter)
 		}
-		row(len(m.offers)+i, name, fmt.Sprintf("sell $%d", sellPrice(mod)), mod.Desc, sDim)
+		row(len(m.offers)+i, name, fmt.Sprintf("sell $%d", sellPrice(mod)+m.upgrades[resale]), mod.Desc, sDim)
 	}
 
 	if m.msg != "" {
 		b.WriteString("\n" + sWarn.Render(m.msg) + "\n")
 	}
-	b.WriteString("\n" + sDim.Render(fmt.Sprintf("↑↓ move · enter buy/sell · r reroll ($%d) · c next round · v deck · i supplies · h hands · q quit", m.rerollPrice)))
+	if m.stockItem != nil {
+		fmt.Fprintf(&b, "\ni supplies · %s ($3)", m.stockItem.Name)
+	}
+	if !m.packSold {
+		fmt.Fprintf(&b, "\nb open %s %s pack ($%d)", packSizes[m.packSize], packKinds[m.packKind], m.packPrice())
+	}
+	if i := m.upgradeOffer; i >= 0 {
+		fmt.Fprintf(&b, "\nu buy %s %d ($%d) · %s", upgradeLines[i].Name, m.upgrades[i]+1, m.upgradePrice(), upgradeLines[i].Desc)
+	}
+	b.WriteString("\n" + sDim.Render(fmt.Sprintf("↑↓ move · enter buy/sell · r reroll ($%d) · c next round · v deck · i supplies · h hands · q quit", m.rerollCharge())))
 	return panel.Padding(1, 2).Render(b.String())
 }
 

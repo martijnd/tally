@@ -138,12 +138,12 @@ func (m *model) inventoryKey(key string) {
 	switch key {
 	case "i", "esc":
 		m.inventory = false
-	case "1", "2":
+	case "1", "2", "3", "4":
 		m.useSupply(int(key[0] - '1'))
 	case "up", "down", " ":
 		m.updatePlay(key)
 	case "b":
-		if m.phase == phaseShop && m.stockItem != nil && len(m.bag) < 2 && m.money >= 3 {
+		if m.phase == phaseShop && m.stockItem != nil && len(m.bag) < m.bagSlots() && m.money >= 3 {
 			m.money -= 3
 			m.bag = append(m.bag, *m.stockItem)
 			m.stockItem = nil
@@ -152,7 +152,7 @@ func (m *model) inventoryKey(key string) {
 }
 func (m *model) inventoryView() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Supplies %d/2 · $%d\n", len(m.bag), m.money)
+	fmt.Fprintf(&b, "Supplies %d/%d · $%d\n", len(m.bag), m.bagSlots(), m.money)
 	for i, it := range m.bag {
 		fmt.Fprintf(&b, "%d  %s · %s\n", i+1, it.Name, it.Description)
 	}
@@ -170,6 +170,6 @@ func (m *model) inventoryView() string {
 		}
 		fmt.Fprintf(&b, "%s [%s] %s\n", marker, map[bool]string{true: "x", false: " "}[m.selected[i]], label)
 	}
-	fmt.Fprintf(&b, "↑↓ target · space select · 1/2 use · i close\n%s", m.msg)
+	fmt.Fprintf(&b, "↑↓ target · space select · number use · i close\n%s", m.msg)
 	return panel.Padding(1, 2).Render(b.String())
 }

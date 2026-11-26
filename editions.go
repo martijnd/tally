@@ -14,7 +14,7 @@ func editionScore(edition, chips, mult int) (int, int) {
 	return chips, mult
 }
 func (m *model) modSlots() int {
-	n := maxMods + m.slotBonus
+	n := maxMods + m.slotBonus + m.upgrades[cabinet]
 	for _, mod := range m.mods {
 		if mod.Edition == 4 {
 			n++
@@ -23,7 +23,7 @@ func (m *model) modSlots() int {
 	return n
 }
 func (m *model) drawLimit() int {
-	limit := handSize + m.handBonus
+	limit := handSize + m.handBonus + m.upgrades[folio]
 	for _, c := range m.hand {
 		if c.Edition == 4 {
 			limit++

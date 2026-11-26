@@ -24,7 +24,7 @@ Status: `[x]` done, `[ ]` to do.
 - [x] Skip a non-boss round in exchange for a **tag** (a one-off reward)
 - [x] Round preview screen: target, reward, boss effect, skip tag
 - [x] Rewards differ per round type (opening $3, main $4, boss $5)
-- [ ] Interest cap that can be raised by upgrades
+- [x] Interest cap that can be raised by upgrades
 - [x] Game over when out of plays below target; keep run stats
 
 ## 2. Boss rounds
@@ -52,7 +52,7 @@ Status: `[x]` done, `[ ]` to do.
 - [ ] Probability system with a global "odds" multiplier that some items double
 - [ ] Sell value that grows on some modifiers
 - [ ] Stickers on modifiers (higher difficulties): can't be sold, expires after N rounds, costs $1 per round
-- [ ] Slot count can be raised by upgrades and editions
+- [x] Slot count can be raised by upgrades and editions
 
 ## 5. Playing card upgrades
 
@@ -72,16 +72,16 @@ Status: `[x]` done, `[ ]` to do.
 
 ## 7. Shop
 
-- [ ] Shop sections: modifiers and consumables, booster packs, one upgrade
-- [ ] **Booster packs**: open and pick 1 or 2 of 3 to 5 options; pack types for modifiers, playing cards, level-ups, card edits and rare items; normal, jumbo and mega sizes
-- [ ] **Run upgrades** (~32, in pairs where the second needs the first): extra shop slot, cheaper rerolls, higher interest cap, +1 play, +1 discard, +1 hand size, better odds of editions, more consumable slots
+- [x] Shop sections: modifiers and consumables, booster packs, one upgrade
+- [x] **Booster packs**: open and pick 1 or 2 of 3 to 5 options; pack types for modifiers, playing cards, level-ups, card edits and rare items; normal, jumbo and mega sizes
+- [x] **Run upgrades** (~32, in pairs where the second needs the first): extra shop slot, cheaper rerolls, higher interest cap, +1 play, +1 discard, +1 hand size, better odds of editions, more consumable slots
 - [x] Reroll cost that rises within a shop visit and resets each visit
 - [ ] Price scaling with editions, rarity and run modifiers
 
 ## 8. Tags
 
-- [ ] ~24 tags earned by skipping rounds, e.g. free shop item, free reroll, a booster pack, money, an edition on the next shop modifier, double the next tag
-- [ ] Tag queue shown in the UI, applied at the right moment
+- [x] ~24 tags earned by skipping rounds, e.g. free shop item, free reroll, a booster pack, money, an edition on the next shop modifier, double the next tag
+- [x] Tag queue shown in the UI, applied at the right moment
 
 ## 9. Starting decks
 
@@ -105,15 +105,15 @@ Status: `[x]` done, `[ ]` to do.
 
 ## 12. Run options
 
-- [ ] Seeded runs: show the seed, start a run from a seed, deterministic RNG per system (shop, deck, packs, bosses)
+- [x] Seeded runs: show the seed, start a run from a seed, deterministic RNG per system (shop, deck, packs, bosses)
 - [ ] Challenge runs: ~20 hand-designed rule sets with fixed starting modifiers and restrictions
 - [x] Daily run with a shared seed
 
 ## 13. UI and feel
 
 - [x] Deck viewer: remaining and full deck, grouped by suit, with modifications
-- [ ] Run info screen: hand levels, boss list, upgrades owned
-- [ ] Modifier and consumable detail on hover or cursor
+- [x] Run info screen: hand levels, boss list, upgrades owned
+- [x] Modifier and consumable detail on hover or cursor
 - [ ] Mouse support
 - [ ] Faster or skippable scoring animation, configurable speed
 - [x] Rearrange cards in hand by hand, not only sort

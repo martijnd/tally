@@ -39,14 +39,15 @@ func (b boss) debuffs(c Card) bool {
 	return false
 }
 func (m *model) preview() string {
-	description := fmt.Sprintf("Stage %d · %s\nTarget %s · reward $%d\n", m.round/3+1, roundNames[m.round%3], commas(m.target()), 3+m.round%3)
+	description := fmt.Sprintf("Stage %d · %s\nTarget %s · reward $%d\n", m.round/3+1, roundNames[m.round%3], commas(m.target()), 3+m.round%3+2*m.upgrades[dividends])
 	if m.round%3 == 2 {
 		b := m.boss()
 		description += b.Name + " · " + b.Effect
 	} else {
-		description += "s skip · earn Payroll tag ($5 immediately)"
+		t := tags[m.skipTag()]
+		description += "s skip · " + t.Name + " · " + t.Desc
 	}
-	return panel.Padding(1, 2).Render(description + "\n\nenter begin · h hands · q quit")
+	return panel.Padding(1, 2).Render(description + m.tagSummary() + "\n\nenter begin · h hands · q quit")
 }
 
 var roundNames = []string{"opening", "main", "boss"}

@@ -58,21 +58,28 @@ func tick() tea.Cmd {
 }
 
 type model struct {
-	viewingDeck, remainingDeck bool
-	handBonus, slotBonus       int
-	stock                      []Card
-	nextID                     int
-	bag                        []supply
-	stockItem                  *supply
-	inventory                  bool
-	itemRNG                    *rand.Rand
-	bosses                     []boss
-	bossDisabled               bool
-	firstType                  HandType
-	bestGain, skipped          int
-	seed                       string
-	deckRNG, shopRNG           *rand.Rand
-	phase                      phase
+	tagQueue                                    []int
+	doubleTags, freePacks, freeRerolls          int
+	upgrades                                    [16]int
+	upgradeOffer, packKind, packSize, packPicks int
+	packSold                                    bool
+	packChoices                                 []packChoice
+	packRNG                                     *rand.Rand
+	viewingDeck, remainingDeck                  bool
+	handBonus, slotBonus                        int
+	stock                                       []Card
+	nextID                                      int
+	bag                                         []supply
+	stockItem                                   *supply
+	inventory                                   bool
+	itemRNG                                     *rand.Rand
+	bosses                                      []boss
+	bossDisabled                                bool
+	firstType                                   HandType
+	bestGain, skipped                           int
+	seed                                        string
+	deckRNG, shopRNG                            *rand.Rand
+	phase                                       phase
 
 	round, score, money int
 	plays, discards     int
@@ -107,7 +114,7 @@ type model struct {
 func newModel(seed string) *model {
 	m := &model{
 		seed: seed, deckRNG: runStream(seed, "deck"), shopRNG: runStream(seed, "shop"),
-		money: 4, stock: newDeck(), nextID: 52, itemRNG: runStream(seed, "items"),
+		money: 4, stock: newDeck(), nextID: 52, itemRNG: runStream(seed, "items"), packRNG: runStream(seed, "packs"),
 	}
 	rng := runStream(seed, "boss")
 	for _, i := range rng.Perm(len(regularBosses)) {
@@ -134,7 +141,8 @@ func (m *model) startRound() {
 	m.deck = append([]Card(nil), m.stock...)
 	m.deckRNG.Shuffle(len(m.deck), func(i, j int) { m.deck[i], m.deck[j] = m.deck[j], m.deck[i] })
 	m.hand, m.selected = nil, nil
-	m.plays, m.discards = playsPerRound, discardsPerRound
+	m.plays, m.discards = playsPerRound+m.upgrades[rehearsal], discardsPerRound+m.upgrades[wastebasket]
+	m.applyTags("round")
 	m.firstType = -1
 	b := m.boss()
 	switch b.Rule {
@@ -246,7 +254,8 @@ func (m *model) play() tea.Cmd {
 		}
 	}
 	local = valid
-	if m.firstType < 0 {
+	firstPlay := m.firstType < 0
+	if firstPlay {
 		m.firstType = ht
 	}
 	mods := m.mods
@@ -271,7 +280,7 @@ func (m *model) play() tea.Cmd {
 			if c.Enhancement == 3 {
 				held++
 			}
-			if c.Seal == 3 && len(m.bag) < 2 {
+			if c.Seal == 3 && len(m.bag) < m.bagSlots() {
 				m.bag = append(m.bag, m.lesson())
 			}
 		}
@@ -287,7 +296,7 @@ func (m *model) play() tea.Cmd {
 	m.timesPlayed[ht]++
 	ctx := ScoreCtx{HeldPatient: held, Training: m.levels[ht], Type: ht, Scoring: scoringCards, Played: len(played), PlaysLeft: m.plays, Money: m.money}
 	m.events, m.gain = scoreHand(m.hand, scoringIdx, ht, mods, ctx)
-	if (b.Rule == "lock" && ht != m.firstType) || (b.Rule == "late" && m.plays == playsPerRound-1) || (b.Rule == "limit" && len(sel) > b.Amount) || (b.Rule == "minimum" && len(sel) < b.Amount) || (b.Rule == "ban" && int(ht) == b.Amount) {
+	if (b.Rule == "lock" && ht != m.firstType) || (b.Rule == "late" && firstPlay) || (b.Rule == "limit" && len(sel) > b.Amount) || (b.Rule == "minimum" && len(sel) < b.Amount) || (b.Rule == "ban" && int(ht) == b.Amount) {
 		m.gain = 0
 		m.events = append(m.events, Event{Label: b.Name, Card: -1, Mod: -1})
 	}
@@ -427,7 +436,7 @@ func (m *model) discard() {
 		return
 	}
 	for _, i := range sel {
-		if m.hand[i].Seal == 4 && len(m.bag) < 2 {
+		if m.hand[i].Seal == 4 && len(m.bag) < m.bagSlots() {
 			m.bag = append(m.bag, m.lesson())
 		}
 	}
@@ -438,16 +447,17 @@ func (m *model) discard() {
 }
 
 func (m *model) winRound() {
-	m.rewards = []reward{{"round cleared", 3 + m.round%3}}
+	m.rewards = []reward{{"round cleared", 3 + m.round%3 + 2*m.upgrades[dividends]}}
 	if m.plays > 0 {
-		m.rewards = append(m.rewards, reward{fmt.Sprintf("%d unused plays", m.plays), m.plays})
+		m.rewards = append(m.rewards, reward{fmt.Sprintf("%d unused plays", m.plays), m.plays * (1 + m.upgrades[patience])})
 	}
-	if interest := min(m.money/5, 5); interest > 0 {
+	if interest := min(m.money/5, 5+5*m.upgrades[savings]); interest > 0 {
 		m.rewards = append(m.rewards, reward{"interest ($1 per $5)", interest})
 	}
 	for _, r := range m.rewards {
 		m.money += r.amount
 	}
+	m.applyTags("win")
 	m.phase = phaseRoundWon
 }
 
@@ -460,7 +470,10 @@ func (m *model) openShop() {
 			break
 		}
 	}
-	m.rerollPrice = rerollCost
+	m.prepareMarket()
+	m.applyTags("shop")
+	m.applyTags("pack")
+	m.rerollPrice = rerollCost - m.upgrades[coupons]
 	m.rollOffers()
 	m.shopCursor = 0
 	m.msg = ""
@@ -480,15 +493,17 @@ func (m *model) rollOffers() {
 	}
 	m.shopRNG.Shuffle(len(pool), func(i, j int) { pool[i], pool[j] = pool[j], pool[i] })
 	m.offers = nil
-	for i := 0; i < shopOffers && i < len(pool); i++ {
+	for i := 0; i < shopOffers+m.upgrades[shelf] && i < len(pool); i++ {
 		mod := pool[i]
-		if m.shopRNG.IntN(8) == 0 {
+		if m.shopRNG.IntN(8) <= m.upgrades[gilding] {
 			mod.Edition = 1 + m.shopRNG.IntN(4)
 			mod.Price += mod.Edition
 			mod.Desc = editions[mod.Edition] + " edition · " + mod.Desc
 		}
+		mod.Price = max(1, mod.Price-m.upgrades[wholesale])
 		m.offers = append(m.offers, &mod)
 	}
+	m.applyTags("offer")
 }
 
 func sellPrice(mod *Modifier) int { return max(mod.Price/2, 1) }
@@ -510,7 +525,7 @@ func (m *model) shopSelect() {
 	} else {
 		i := m.shopCursor - len(m.offers)
 		mod := m.mods[i]
-		m.money += sellPrice(mod)
+		m.money += sellPrice(mod) + m.upgrades[resale]
 		m.mods = append(m.mods[:i], m.mods[i+1:]...)
 		m.msg = "sold " + mod.Name
 	}
@@ -540,6 +555,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if key == "ctrl+c" || key == "q" {
 			return m, tea.Quit
 		}
+		if len(m.packChoices) > 0 {
+			m.pickPack(key)
+			return m, nil
+		}
 		if m.viewingDeck {
 			switch key {
 			case "v", "esc":
@@ -566,8 +585,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if m.overview {
-			if key == "enter" && m.phase == phaseShop && m.money >= 4 {
-				m.money -= 4
+			if key == "enter" && m.phase == phaseShop && m.money >= 4-m.upgrades[tuition] {
+				m.money -= 4 - m.upgrades[tuition]
 				m.levels[m.cursorHand]++
 			}
 			if key == "down" {
@@ -583,7 +602,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if key == "enter" {
 				m.startRound()
 			} else if key == "s" && m.round%3 != 2 {
-				m.money += 5
+				m.earnTag()
 				m.skipped++
 				m.round++
 			}
@@ -658,6 +677,10 @@ func (m *model) updatePlay(key string) tea.Cmd {
 
 func (m *model) updateShop(key string) {
 	switch key {
+	case "u":
+		m.buyUpgrade()
+	case "b":
+		m.openPack()
 	case "up", "k":
 		if m.shopCursor > 0 {
 			m.shopCursor--
@@ -671,11 +694,15 @@ func (m *model) updateShop(key string) {
 			m.shopSelect()
 		}
 	case "r":
-		if m.money < m.rerollPrice {
+		if m.money < m.rerollCharge() {
 			m.msg = "not enough money to reroll"
 			return
 		}
-		m.money -= m.rerollPrice
+		m.applyTags("reroll")
+		m.money -= m.rerollCharge()
+		if m.freeRerolls > 0 {
+			m.freeRerolls--
+		}
 		m.rerollPrice++
 		m.rollOffers()
 		m.clampShopCursor()

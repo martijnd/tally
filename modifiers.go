@@ -3,6 +3,7 @@ package main
 import "fmt"
 
 type ScoreCtx struct {
+	Training  int
 	Type      HandType
 	Scoring   []Card
 	Played    int

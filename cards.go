@@ -66,6 +66,9 @@ const (
 	FullHouse
 	FourKind
 	StraightFlush
+	FiveKind
+	FlushHouse
+	FlushFive
 )
 
 type handBase struct {
@@ -74,6 +77,7 @@ type handBase struct {
 }
 
 var handBases = [...]handBase{
+	FiveKind: {"five of a kind", 115, 10}, FlushHouse: {"flush house", 135, 12}, FlushFive: {"flush five", 160, 14},
 	HighCard:      {"high card", 5, 1},
 	Pair:          {"pair", 10, 2},
 	TwoPair:       {"two pair", 20, 2},
@@ -136,6 +140,12 @@ func evaluate(cards []Card) (HandType, []int) {
 	}
 
 	switch {
+	case top == 5 && flush:
+		return FlushFive, all
+	case top == 5:
+		return FiveKind, all
+	case top == 3 && second == 2 && flush:
+		return FlushHouse, all
 	case straight && flush:
 		return StraightFlush, all
 	case top == 4:

@@ -83,7 +83,10 @@ type model struct {
 	shopCursor  int
 	rerollPrice int
 
-	msg string
+	levels, timesPlayed [len(handBases)]int
+	cursorHand          int
+	overview            bool
+	msg                 string
 }
 
 func newModel() *model {
@@ -206,7 +209,8 @@ func (m *model) play() tea.Cmd {
 		m.scoring[sel[li]] = true
 	}
 
-	ctx := ScoreCtx{Type: ht, Scoring: scoringCards, Played: len(played), PlaysLeft: m.plays, Money: m.money}
+	m.timesPlayed[ht]++
+	ctx := ScoreCtx{Training: m.levels[ht], Type: ht, Scoring: scoringCards, Played: len(played), PlaysLeft: m.plays, Money: m.money}
 	m.events, m.gain = scoreHand(m.hand, scoringIdx, ht, m.mods, ctx)
 	m.shown, m.step = 0, 0
 	m.baseScore = m.score
@@ -216,7 +220,7 @@ func (m *model) play() tea.Cmd {
 }
 
 func scoreHand(hand []Card, scoring []int, ht HandType, mods []*Modifier, ctx ScoreCtx) ([]Event, int) {
-	b := handBases[ht]
+	b := trainedBase(ht, ctx.Training)
 	chips, mult := b.Chips, b.Mult
 	ev := []Event{{Label: b.Name, Chips: chips, Mult: mult, Card: -1, Mod: -1}}
 
@@ -405,6 +409,23 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if key == "ctrl+c" || key == "q" {
 			return m, tea.Quit
 		}
+		if key == "h" && m.phase != phaseScoring {
+			m.overview = !m.overview
+			return m, nil
+		}
+		if m.overview {
+			if key == "enter" && m.phase == phaseShop && m.money >= 4 {
+				m.money -= 4
+				m.levels[m.cursorHand]++
+			}
+			if key == "down" {
+				m.cursorHand = (m.cursorHand + 1) % len(handBases)
+			}
+			if key == "up" {
+				m.cursorHand = (m.cursorHand + len(handBases) - 1) % len(handBases)
+			}
+			return m, nil
+		}
 		switch m.phase {
 		case phasePlay:
 			return m, m.updatePlay(key)
@@ -490,4 +511,11 @@ func (m *model) updateShop(key string) {
 		m.round++
 		m.startRound()
 	}
+}
+
+func trainedBase(ht HandType, training int) handBase {
+	b := handBases[ht]
+	b.Chips += training * (5 + int(ht)*2)
+	b.Mult += training * (1 + int(ht)/4)
+	return b
 }

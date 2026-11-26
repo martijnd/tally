@@ -94,6 +94,22 @@ func (m *model) currentEvent() (Event, bool) {
 }
 
 func (m *model) View() string {
+	if m.overview {
+		var b strings.Builder
+		b.WriteString("Hand overview · h to close\n")
+		for i := range handBases {
+			base := trainedBase(HandType(i), m.levels[i])
+			cursor := " "
+			if i == m.cursorHand {
+				cursor = ">"
+			}
+			fmt.Fprintf(&b, "%s %-18s Lv %d   %d × %d   played %d\n", cursor, base.Name, 1+m.levels[i], base.Chips, base.Mult, m.timesPlayed[i])
+		}
+		if m.phase == phaseShop {
+			fmt.Fprintf(&b, "↑↓ choose · enter train ($4) · wallet $%d", m.money)
+		}
+		return panel.Padding(1, 2).Render(b.String())
+	}
 	switch m.phase {
 	case phaseRoundWon:
 		return m.viewRoundWon()
@@ -121,7 +137,7 @@ func (m *model) viewTable() string {
 	if m.msg != "" {
 		msg = " " + sWarn.Render(m.msg)
 	}
-	help := sDim.Render(" ↑↓ move · space select · p play · d discard · s sort · c clear · q quit")
+	help := sDim.Render(" ↑↓ move · space select · p play · d discard · s sort · c clear · h hands · q quit")
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, m.viewMods(w), msg, help)
 }
 
@@ -337,7 +353,7 @@ func (m *model) viewShop() string {
 	if m.msg != "" {
 		b.WriteString("\n" + sWarn.Render(m.msg) + "\n")
 	}
-	b.WriteString("\n" + sDim.Render(fmt.Sprintf("↑↓ move · enter buy/sell · r reroll ($%d) · c next round · q quit", m.rerollPrice)))
+	b.WriteString("\n" + sDim.Render(fmt.Sprintf("↑↓ move · enter buy/sell · r reroll ($%d) · c next round · h hands · q quit", m.rerollPrice)))
 	return panel.Padding(1, 2).Render(b.String())
 }
 
@@ -350,6 +366,6 @@ func (m *model) viewEnd() string {
 		b.WriteString(sBad.Render("out of plays") + "\n\n")
 		b.WriteString(sText.Render(fmt.Sprintf("round %d: %s / %s", m.round+1, commas(m.score), commas(m.target()))) + "\n")
 	}
-	b.WriteString("\n" + sDim.Render("n new run · q quit"))
+	b.WriteString("\n" + sDim.Render("n new run · h hands · q quit"))
 	return panel.Padding(1, 3).Render(b.String())
 }

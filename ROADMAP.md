@@ -37,10 +37,10 @@ Status: `[x]` done, `[ ]` to do.
 
 ## 3. Hand levels
 
-- [ ] Each hand type has a level; levelling adds base chips and mult per hand type
-- [ ] Track times played per hand type (used by some modifiers and the stats screen)
-- [ ] Hand overview screen: level, chips, mult, times played
-- [ ] Secret hands, only possible with modified decks: five of a kind, flush house, flush five
+- [x] Each hand type has a level; levelling adds base chips and mult per hand type
+- [x] Track times played per hand type (used by some modifiers and the stats screen)
+- [x] Hand overview screen: level, chips, mult, times played
+- [x] Secret hands, only possible with modified decks: five of a kind, flush house, flush five
 
 ## 4. Modifiers (the main build engine)
 

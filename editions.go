@@ -114,6 +114,7 @@ func (m *model) strikeBargain(b bargain) bool {
 		i := m.itemRNG.IntN(len(m.stock))
 		id := m.stock[i].ID
 		m.stock = append(m.stock[:i], m.stock[i+1:]...)
+		m.emit("destroyed")
 		for i, c := range m.hand {
 			if c.ID == id {
 				m.hand = append(m.hand[:i], m.hand[i+1:]...)

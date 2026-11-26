@@ -3,6 +3,8 @@ package main
 import "fmt"
 
 type ScoreCtx struct {
+	Previous    int
+	OnScore     func(Card)
 	HeldPatient int
 	Training    int
 	Type        HandType
@@ -15,13 +17,16 @@ type ScoreCtx struct {
 // Modifier changes scoring. card runs once per scoring card, hand runs once
 // after all cards, after runs when the play is finished.
 type Modifier struct {
-	Sticker string
-	Life    int
-	Edition int
-	Name    string
-	Desc    string
-	Price   int
-	Counter int
+	Rarity, RepeatRank, ResaleGrowth int
+	Copy                             bool
+	Trigger, Effect                  string
+	Sticker                          string
+	Life                             int
+	Edition                          int
+	Name                             string
+	Desc                             string
+	Price                            int
+	Counter                          int
 
 	card  func(m *Modifier, c Card) (chips, mult int)
 	hand  func(m *Modifier, ctx ScoreCtx, chips, mult int) (label string, newChips, newMult int)
@@ -134,6 +139,10 @@ func catalog() []Modifier {
 				return 0, 0
 			},
 		})
+	}
+	mods = append(mods, expandedCatalog()...)
+	for i := range mods {
+		mods[i].Price += 2 * mods[i].Rarity
 	}
 	return mods
 }

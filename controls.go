@@ -1,0 +1,237 @@
+package main
+
+import (
+	"fmt"
+	tea "github.com/charmbracelet/bubbletea"
+	"time"
+)
+
+type tickMsg struct{}
+
+func tick() tea.Cmd {
+	return tea.Tick(170*time.Millisecond, func(time.Time) tea.Msg { return tickMsg{} })
+}
+
+func (m *model) advanceScoring() tea.Cmd {
+	if m.shown < len(m.events) {
+		m.shown++
+		return tick()
+	}
+	if m.step < countSteps {
+		m.step++
+		m.shownScore = m.baseScore + m.gain*m.step/countSteps
+		return tick()
+	}
+	m.finishPlay()
+	return nil
+}
+
+func (m *model) Init() tea.Cmd { return nil }
+
+func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	defer func() {
+		if m.restriction("cash cap") {
+			m.money = min(8, m.money)
+		}
+	}()
+	switch msg := msg.(type) {
+	case tickMsg:
+		if m.phase == phaseScoring {
+			return m, m.advanceScoring()
+		}
+	case tea.KeyMsg:
+		key := msg.String()
+		if key == "ctrl+c" || key == "q" {
+			return m, tea.Quit
+		}
+		if m.collection {
+			m.collectionKey(key)
+			return m, nil
+		}
+		if key == "a" && m.phase != phaseScoring {
+			m.collection = true
+			return m, nil
+		}
+		if len(m.packChoices) > 0 {
+			m.pickPack(key)
+			return m, nil
+		}
+		if m.viewingDeck {
+			switch key {
+			case "v", "esc":
+				m.viewingDeck = false
+			case "tab":
+				m.remainingDeck = !m.remainingDeck
+			}
+			return m, nil
+		}
+		if key == "v" && !m.inventory && !m.overview && m.phase != phaseScoring {
+			m.viewingDeck = true
+			return m, nil
+		}
+		if m.inventory {
+			m.inventoryKey(key)
+			return m, nil
+		}
+		if key == "i" && !m.overview && (m.phase == phasePlay || m.phase == phaseShop) {
+			m.inventory = true
+			return m, nil
+		}
+		if m.phase == phaseStart {
+			m.startKey(key)
+			return m, nil
+		}
+		if key == "h" && m.phase != phaseScoring {
+			m.overview = !m.overview
+			return m, nil
+		}
+		if m.overview {
+			if key == "enter" && m.phase == phaseShop && m.money >= 4-m.upgrades[tuition] {
+				m.money -= 4 - m.upgrades[tuition]
+				m.levels[m.cursorHand]++
+			}
+			if key == "down" {
+				m.cursorHand = (m.cursorHand + 1) % len(handBases)
+			}
+			if key == "up" {
+				m.cursorHand = (m.cursorHand + len(handBases) - 1) % len(handBases)
+			}
+			return m, nil
+		}
+		switch m.phase {
+		case phasePreview:
+			if key == "enter" {
+				m.startRound()
+			} else if key == "s" && m.round%3 != 2 && !m.restriction("no skips") {
+				m.earnTag()
+				m.skipped++
+				m.round++
+			}
+		case phasePlay:
+			return m, m.updatePlay(key)
+		case phaseRoundWon:
+			if key == "enter" || key == " " {
+				if m.round == numRounds-1 {
+					m.phase = phaseWon
+					m.bestDifficulty[m.deckID] = max(m.bestDifficulty[m.deckID], m.difficulty+1)
+				} else {
+					m.openShop()
+				}
+			}
+		case phaseShop:
+			m.updateShop(key)
+		case phaseLost, phaseWon:
+			if key == "e" && m.phase == phaseWon {
+				m.openShop()
+			}
+			if key == "n" {
+				record := m.bestDifficulty
+				*m = *newModel(m.seed)
+				m.bestDifficulty = record
+			}
+		}
+	}
+	return m, nil
+}
+
+func (m *model) updatePlay(key string) tea.Cmd {
+	switch key {
+	case "up", "k":
+		if m.cursor > 0 {
+			m.cursor--
+		}
+	case "down", "j":
+		if m.cursor < len(m.hand)-1 {
+			m.cursor++
+		}
+	case " ", "x":
+		if len(m.hand) == 0 {
+			return nil
+		}
+		if !m.selected[m.cursor] && len(m.selectedIdx()) >= maxSelect {
+			m.msg = fmt.Sprintf("you can select up to %d", maxSelect)
+			return nil
+		}
+		m.selected[m.cursor] = !m.selected[m.cursor]
+		m.msg = ""
+	case "p", "enter":
+		if m.play() {
+			return tick()
+		}
+		return nil
+	case "d":
+		m.discard()
+	case "[", "]":
+		dest := m.cursor - 1
+		if key == "]" {
+			dest = m.cursor + 1
+		}
+		if dest >= 0 && dest < len(m.hand) {
+			m.hand[m.cursor], m.hand[dest] = m.hand[dest], m.hand[m.cursor]
+			m.selected[m.cursor], m.selected[dest] = m.selected[dest], m.selected[m.cursor]
+			m.cursor = dest
+		}
+	case "s":
+		m.bySuit = !m.bySuit
+		m.sortHand()
+	case "c":
+		for i := range m.selected {
+			m.selected[i] = false
+		}
+	}
+	return nil
+}
+
+func (m *model) updateShop(key string) {
+	switch key {
+	case "[", "]":
+		i := m.shopCursor - len(m.offers)
+		j := i - 1
+		if key == "]" {
+			j = i + 1
+		}
+		if i >= 0 && i < len(m.mods) && j >= 0 && j < len(m.mods) {
+			m.mods[i], m.mods[j] = m.mods[j], m.mods[i]
+			m.shopCursor += j - i
+		}
+	case "u":
+		m.buyUpgrade()
+	case "b":
+		m.openPack()
+	case "up", "k":
+		if m.shopCursor > 0 {
+			m.shopCursor--
+		}
+	case "down", "j":
+		if m.shopCursor < len(m.offers)+len(m.mods)-1 {
+			m.shopCursor++
+		}
+	case "enter", " ":
+		if len(m.offers)+len(m.mods) > 0 {
+			m.shopSelect()
+		}
+	case "r":
+		if m.restriction("no rerolls") {
+			m.msg = "Challenge forbids rerolls"
+			return
+		}
+		if m.money < m.rerollCharge() {
+			m.msg = "not enough money to reroll"
+			return
+		}
+		m.applyTags("reroll")
+		m.money -= m.rerollCharge()
+		if m.freeRerolls > 0 {
+			m.freeRerolls--
+		}
+		m.emit("reroll")
+		m.rerollPrice++
+		m.rollOffers()
+		m.clampShopCursor()
+		m.msg = "rerolled"
+	case "c", "n":
+		m.round++
+		m.bossDisabled = false
+		m.phase = phasePreview
+	}
+}

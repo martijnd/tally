@@ -401,7 +401,7 @@ func (m *model) viewShop() string {
 	if i := m.upgradeOffer; i >= 0 {
 		fmt.Fprintf(&b, "\nu buy %s %d ($%d) · %s", upgradeLines[i].Name, m.upgrades[i]+1, m.upgradePrice(), upgradeLines[i].Desc)
 	}
-	b.WriteString("\n" + sDim.Render(fmt.Sprintf("↑↓ move · enter buy/sell · r reroll ($%d) · c next round · v deck · i supplies · h hands · q quit", m.rerollCharge())))
+	b.WriteString("\n" + sDim.Render(fmt.Sprintf("↑↓ move · enter buy/sell · [ ] reorder owned · r reroll ($%d) · c next round · v deck · i supplies · h hands · q quit", m.rerollCharge())))
 	return panel.Padding(1, 2).Render(b.String())
 }
 

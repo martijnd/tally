@@ -170,6 +170,7 @@ func (m *model) pickPack(key string) {
 		m.nextID++
 		p.card.ID = m.nextID
 		m.stock = append(m.stock, *p.card)
+		m.emit("added")
 		m.deck = append(m.deck, *p.card)
 	default:
 		if len(m.bag) >= m.bagSlots() {

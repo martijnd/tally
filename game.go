@@ -5,9 +5,6 @@ import (
 	"math/rand/v2"
 	"slices"
 	"sort"
-	"time"
-
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 const (
@@ -50,12 +47,6 @@ type Event struct {
 type reward struct {
 	label  string
 	amount int
-}
-
-type tickMsg struct{}
-
-func tick() tea.Cmd {
-	return tea.Tick(170*time.Millisecond, func(time.Time) tea.Msg { return tickMsg{} })
 }
 
 type model struct {
@@ -180,6 +171,7 @@ func (m *model) startRound() {
 	m.msg = ""
 	m.draw()
 	m.phase = phasePlay
+	m.emit("start")
 }
 
 func (m *model) draw() {
@@ -259,11 +251,11 @@ func (m *model) removeSelected() {
 	m.clampCursor()
 }
 
-func (m *model) play() tea.Cmd {
+func (m *model) play() bool {
 	sel := m.selectedIdx()
 	if len(sel) == 0 {
 		m.msg = "select at least one card"
-		return nil
+		return false
 	}
 	m.plays--
 	played := m.selectedCards()
@@ -300,6 +292,7 @@ func (m *model) play() tea.Cmd {
 	held := 0
 	for i, c := range m.hand {
 		if !m.selected[i] && !b.debuffs(c) {
+			m.emit("held")
 			if c.Enhancement == 3 {
 				held++
 			}
@@ -308,7 +301,8 @@ func (m *model) play() tea.Cmd {
 			}
 		}
 	}
-	for _, c := range scoringCards {
+	onScore := func(c Card) {
+		m.emit("score")
 		if c.Seal == 2 {
 			m.money += 2
 		}
@@ -317,7 +311,7 @@ func (m *model) play() tea.Cmd {
 		}
 	}
 	m.timesPlayed[ht]++
-	ctx := ScoreCtx{HeldPatient: held, Training: m.levels[ht], Type: ht, Scoring: scoringCards, Played: len(played), PlaysLeft: m.plays, Money: m.money}
+	ctx := ScoreCtx{Previous: m.timesPlayed[ht] - 1, OnScore: onScore, HeldPatient: held, Training: m.levels[ht], Type: ht, Scoring: scoringCards, Played: len(played), PlaysLeft: m.plays, Money: m.money}
 	m.events, m.gain = scoreHand(m.hand, scoringIdx, ht, mods, ctx)
 	if (b.Rule == "lock" && ht != m.firstType) || (b.Rule == "late" && firstPlay) || (b.Rule == "limit" && len(sel) > b.Amount) || (b.Rule == "minimum" && len(sel) < b.Amount) || (b.Rule == "ban" && int(ht) == b.Amount) {
 		m.gain = 0
@@ -328,7 +322,7 @@ func (m *model) play() tea.Cmd {
 	m.baseScore = m.score
 	m.msg = ""
 	m.phase = phaseScoring
-	return tick()
+	return true
 }
 
 func scoreHand(hand []Card, scoring []int, ht HandType, mods []*Modifier, ctx ScoreCtx) ([]Event, int) {
@@ -342,7 +336,15 @@ func scoreHand(hand []Card, scoring []int, ht HandType, mods []*Modifier, ctx Sc
 		if c.Seal == 1 {
 			repeats++
 		}
+		for i := range mods {
+			if scoringSource(mods, i).RepeatRank == c.Rank && c.Enhancement != 7 {
+				repeats++
+			}
+		}
 		for range repeats {
+			if ctx.OnScore != nil {
+				ctx.OnScore(c)
+			}
 			chips += c.Chips()
 			chips, mult = editionScore(c.Edition, chips, mult)
 			switch c.Enhancement {
@@ -355,10 +357,11 @@ func scoreHand(hand []Card, scoring []int, ht HandType, mods []*Modifier, ctx Sc
 			}
 			ev = append(ev, Event{Label: fmt.Sprintf("+%d chips", c.Chips()), Chips: chips, Mult: mult, Card: hi, C: c, HasCard: true, Mod: -1})
 			for mi, mod := range mods {
-				if mod.card == nil || c.Enhancement == 7 {
+				source := scoringSource(mods, mi)
+				if source.card == nil || c.Enhancement == 7 {
 					continue
 				}
-				dc, dm := mod.card(mod, c)
+				dc, dm := source.card(source, c)
 				if dc == 0 && dm == 0 {
 					continue
 				}
@@ -378,10 +381,11 @@ func scoreHand(hand []Card, scoring []int, ht HandType, mods []*Modifier, ctx Sc
 			chips, mult = editionScore(mod.Edition, chips, mult)
 			ev = append(ev, Event{Label: editions[mod.Edition] + " " + mod.Name, Chips: chips, Mult: mult, Card: -1, Mod: mi})
 		}
-		if mod.hand == nil {
+		source := scoringSource(mods, mi)
+		if source.hand == nil {
 			continue
 		}
-		label, c2, m2 := mod.hand(mod, ctx, chips, mult)
+		label, c2, m2 := source.hand(source, ctx, chips, mult)
 		if label == "" {
 			continue
 		}
@@ -407,27 +411,14 @@ func deltaLabel(dc, dm int) string {
 	return fmt.Sprintf("+%d mult", dm)
 }
 
-func (m *model) advanceScoring() tea.Cmd {
-	if m.shown < len(m.events) {
-		m.shown++
-		return tick()
-	}
-	if m.step < countSteps {
-		m.step++
-		m.shownScore = m.baseScore + m.gain*m.step/countSteps
-		return tick()
-	}
-	m.finishPlay()
-	return nil
-}
-
 func (m *model) finishPlay() {
 	m.score = m.baseScore + m.gain
 	m.shownScore = m.score
 	for i := range m.hand {
 		c := m.hand[i]
-		if m.scoring[i] && c.Enhancement == 5 && len(m.stock) > 1 && m.itemRNG.IntN(4) == 0 {
+		if m.scoring[i] && c.Enhancement == 5 && len(m.stock) > 1 && m.itemRNG.IntN(4) < m.odds() {
 			m.stock = slices.DeleteFunc(m.stock, func(other Card) bool { return other.ID == c.ID })
+			m.emit("destroyed")
 		}
 	}
 	m.scoring = nil
@@ -463,6 +454,7 @@ func (m *model) discard() {
 			m.bag = append(m.bag, m.lesson())
 		}
 	}
+	m.emit("discard")
 	m.discards--
 	m.removeSelected()
 	m.draw()
@@ -484,6 +476,7 @@ func (m *model) winRound() {
 	for _, r := range m.rewards {
 		m.money += r.amount
 	}
+	m.emit("end")
 	m.settleStickers()
 	m.applyTags("win")
 	m.phase = phaseRoundWon
@@ -498,6 +491,7 @@ func (m *model) openShop() {
 			break
 		}
 	}
+	m.emit("shop")
 	m.prepareMarket()
 	m.applyTags("shop")
 	m.applyTags("pack")
@@ -519,10 +513,22 @@ func (m *model) rollOffers() {
 			pool = append(pool, mod)
 		}
 	}
-	m.shopRNG.Shuffle(len(pool), func(i, j int) { pool[i], pool[j] = pool[j], pool[i] })
+
 	m.offers = nil
-	for i := 0; i < shopOffers+m.upgrades[shelf] && i < len(pool); i++ {
+	for len(m.offers) < shopOffers+m.upgrades[shelf] && len(pool) > 0 {
+		total := 0
+		for _, mod := range pool {
+			total += rarityWeight[mod.Rarity]
+		}
+		draw := m.shopRNG.IntN(total)
+		i := 0
+		for draw >= rarityWeight[pool[i].Rarity] {
+			draw -= rarityWeight[pool[i].Rarity]
+			i++
+		}
 		mod := pool[i]
+		pool = append(pool[:i], pool[i+1:]...)
+		mod.Desc = rarities[mod.Rarity] + " · " + mod.Desc
 		if m.shopRNG.IntN(8) <= m.upgrades[gilding] {
 			mod.Edition = 1 + m.shopRNG.IntN(4)
 			mod.Price += mod.Edition
@@ -535,7 +541,7 @@ func (m *model) rollOffers() {
 	m.applyTags("offer")
 }
 
-func sellPrice(mod *Modifier) int { return max(mod.Price/2, 1) }
+func sellPrice(mod *Modifier) int { return max(mod.Price/2, 1) + mod.ResaleGrowth }
 
 func (m *model) shopSelect() {
 	if m.shopCursor < len(m.offers) {
@@ -549,6 +555,7 @@ func (m *model) shopSelect() {
 			m.money -= mod.Price
 			m.mods = append(m.mods, mod)
 			m.offers = append(m.offers[:m.shopCursor], m.offers[m.shopCursor+1:]...)
+			m.emit("buy")
 			m.msg = "bought " + mod.Name
 		}
 	} else {
@@ -560,6 +567,7 @@ func (m *model) shopSelect() {
 		}
 		m.money += sellPrice(mod) + m.upgrades[resale]
 		m.mods = append(m.mods[:i], m.mods[i+1:]...)
+		m.emit("sell")
 		m.msg = "sold " + mod.Name
 	}
 	m.clampShopCursor()
@@ -572,202 +580,6 @@ func (m *model) clampShopCursor() {
 	}
 	if m.shopCursor < 0 {
 		m.shopCursor = 0
-	}
-}
-
-func (m *model) Init() tea.Cmd { return nil }
-
-func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	defer func() {
-		if m.restriction("cash cap") {
-			m.money = min(8, m.money)
-		}
-	}()
-	switch msg := msg.(type) {
-	case tickMsg:
-		if m.phase == phaseScoring {
-			return m, m.advanceScoring()
-		}
-	case tea.KeyMsg:
-		key := msg.String()
-		if key == "ctrl+c" || key == "q" {
-			return m, tea.Quit
-		}
-		if m.collection {
-			m.collectionKey(key)
-			return m, nil
-		}
-		if key == "a" && m.phase != phaseScoring {
-			m.collection = true
-			return m, nil
-		}
-		if len(m.packChoices) > 0 {
-			m.pickPack(key)
-			return m, nil
-		}
-		if m.viewingDeck {
-			switch key {
-			case "v", "esc":
-				m.viewingDeck = false
-			case "tab":
-				m.remainingDeck = !m.remainingDeck
-			}
-			return m, nil
-		}
-		if key == "v" && !m.inventory && !m.overview && m.phase != phaseScoring {
-			m.viewingDeck = true
-			return m, nil
-		}
-		if m.inventory {
-			m.inventoryKey(key)
-			return m, nil
-		}
-		if key == "i" && !m.overview && (m.phase == phasePlay || m.phase == phaseShop) {
-			m.inventory = true
-			return m, nil
-		}
-		if m.phase == phaseStart {
-			m.startKey(key)
-			return m, nil
-		}
-		if key == "h" && m.phase != phaseScoring {
-			m.overview = !m.overview
-			return m, nil
-		}
-		if m.overview {
-			if key == "enter" && m.phase == phaseShop && m.money >= 4-m.upgrades[tuition] {
-				m.money -= 4 - m.upgrades[tuition]
-				m.levels[m.cursorHand]++
-			}
-			if key == "down" {
-				m.cursorHand = (m.cursorHand + 1) % len(handBases)
-			}
-			if key == "up" {
-				m.cursorHand = (m.cursorHand + len(handBases) - 1) % len(handBases)
-			}
-			return m, nil
-		}
-		switch m.phase {
-		case phasePreview:
-			if key == "enter" {
-				m.startRound()
-			} else if key == "s" && m.round%3 != 2 && !m.restriction("no skips") {
-				m.earnTag()
-				m.skipped++
-				m.round++
-			}
-		case phasePlay:
-			return m, m.updatePlay(key)
-		case phaseRoundWon:
-			if key == "enter" || key == " " {
-				if m.round == numRounds-1 {
-					m.phase = phaseWon
-					m.bestDifficulty[m.deckID] = max(m.bestDifficulty[m.deckID], m.difficulty+1)
-				} else {
-					m.openShop()
-				}
-			}
-		case phaseShop:
-			m.updateShop(key)
-		case phaseLost, phaseWon:
-			if key == "e" && m.phase == phaseWon {
-				m.openShop()
-			}
-			if key == "n" {
-				record := m.bestDifficulty
-				*m = *newModel(m.seed)
-				m.bestDifficulty = record
-			}
-		}
-	}
-	return m, nil
-}
-
-func (m *model) updatePlay(key string) tea.Cmd {
-	switch key {
-	case "up", "k":
-		if m.cursor > 0 {
-			m.cursor--
-		}
-	case "down", "j":
-		if m.cursor < len(m.hand)-1 {
-			m.cursor++
-		}
-	case " ", "x":
-		if len(m.hand) == 0 {
-			return nil
-		}
-		if !m.selected[m.cursor] && len(m.selectedIdx()) >= maxSelect {
-			m.msg = fmt.Sprintf("you can select up to %d", maxSelect)
-			return nil
-		}
-		m.selected[m.cursor] = !m.selected[m.cursor]
-		m.msg = ""
-	case "p", "enter":
-		return m.play()
-	case "d":
-		m.discard()
-	case "[", "]":
-		dest := m.cursor - 1
-		if key == "]" {
-			dest = m.cursor + 1
-		}
-		if dest >= 0 && dest < len(m.hand) {
-			m.hand[m.cursor], m.hand[dest] = m.hand[dest], m.hand[m.cursor]
-			m.selected[m.cursor], m.selected[dest] = m.selected[dest], m.selected[m.cursor]
-			m.cursor = dest
-		}
-	case "s":
-		m.bySuit = !m.bySuit
-		m.sortHand()
-	case "c":
-		for i := range m.selected {
-			m.selected[i] = false
-		}
-	}
-	return nil
-}
-
-func (m *model) updateShop(key string) {
-	switch key {
-	case "u":
-		m.buyUpgrade()
-	case "b":
-		m.openPack()
-	case "up", "k":
-		if m.shopCursor > 0 {
-			m.shopCursor--
-		}
-	case "down", "j":
-		if m.shopCursor < len(m.offers)+len(m.mods)-1 {
-			m.shopCursor++
-		}
-	case "enter", " ":
-		if len(m.offers)+len(m.mods) > 0 {
-			m.shopSelect()
-		}
-	case "r":
-		if m.restriction("no rerolls") {
-			m.msg = "Challenge forbids rerolls"
-			return
-		}
-		if m.money < m.rerollCharge() {
-			m.msg = "not enough money to reroll"
-			return
-		}
-		m.applyTags("reroll")
-		m.money -= m.rerollCharge()
-		if m.freeRerolls > 0 {
-			m.freeRerolls--
-		}
-		m.rerollPrice++
-		m.rollOffers()
-		m.clampShopCursor()
-		m.msg = "rerolled"
-	case "c", "n":
-		m.round++
-		m.bossDisabled = false
-		m.phase = phasePreview
 	}
 }
 

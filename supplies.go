@@ -64,10 +64,12 @@ func (m *model) editCards(item supply) bool {
 			m.nextID++
 			c.ID = m.nextID
 			m.stock = append(m.stock, c)
+			m.emit("added")
 			m.deck = append(m.deck, c)
 			continue
 		case "destroy":
 			m.stock = slices.Delete(m.stock, pos, pos+1)
+			m.emit("destroyed")
 			continue
 		case "rank":
 			c.Rank = (c.Rank-1+item.Value+13)%13 + 1

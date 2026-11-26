@@ -44,13 +44,13 @@ Status: `[x]` done, `[ ]` to do.
 
 ## 4. Modifiers (the main build engine)
 
-- [ ] Grow the pool to ~150 original modifiers
-- [ ] Rarity tiers: common, uncommon, rare, legendary, with shop weights
-- [ ] Slot order matters and can be rearranged
-- [ ] Trigger points: on card scored, on hand scored, on card held in hand, on discard, on round start/end, on shop enter, on reroll, on buy/sell, on card added/destroyed
-- [ ] Effect families: +chips, +mult, ×mult, money, retrigger cards, copy another modifier, create consumables, add cards to the deck, destroy cards, scale over time, probability-based effects
-- [ ] Probability system with a global "odds" multiplier that some items double
-- [ ] Sell value that grows on some modifiers
+- [x] Grow the pool to ~150 original modifiers
+- [x] Rarity tiers: common, uncommon, rare, legendary, with shop weights
+- [x] Slot order matters and can be rearranged
+- [x] Trigger points: on card scored, on hand scored, on card held in hand, on discard, on round start/end, on shop enter, on reroll, on buy/sell, on card added/destroyed
+- [x] Effect families: +chips, +mult, ×mult, money, retrigger cards, copy another modifier, create consumables, add cards to the deck, destroy cards, scale over time, probability-based effects
+- [x] Probability system with a global "odds" multiplier that some items double
+- [x] Sell value that grows on some modifiers
 - [x] Stickers on modifiers (higher difficulties): can't be sold, expires after N rounds, costs $1 per round
 - [x] Slot count can be raised by upgrades and editions
 
@@ -76,7 +76,7 @@ Status: `[x]` done, `[ ]` to do.
 - [x] **Booster packs**: open and pick 1 or 2 of 3 to 5 options; pack types for modifiers, playing cards, level-ups, card edits and rare items; normal, jumbo and mega sizes
 - [x] **Run upgrades** (~32, in pairs where the second needs the first): extra shop slot, cheaper rerolls, higher interest cap, +1 play, +1 discard, +1 hand size, better odds of editions, more consumable slots
 - [x] Reroll cost that rises within a shop visit and resets each visit
-- [ ] Price scaling with editions, rarity and run modifiers
+- [x] Price scaling with editions, rarity and run modifiers
 
 ## 8. Tags
 
@@ -123,8 +123,8 @@ Status: `[x]` done, `[ ]` to do.
 
 ## 14. Engineering
 
-- [ ] Separate game rules from the TUI so rules can be tested without rendering
-- [ ] Event-driven scoring pipeline that handles retriggers, copies and trigger order
-- [ ] Data-driven content definitions for modifiers, bosses, consumables and decks
+- [x] Separate game rules from the TUI so rules can be tested without rendering
+- [x] Event-driven scoring pipeline that handles retriggers, copies and trigger order
+- [x] Data-driven content definitions for modifiers, bosses, consumables and decks
 - [ ] Simulation harness to balance targets and item strength over thousands of runs
 - [ ] Release builds for macOS, Linux and Windows

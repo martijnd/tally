@@ -97,6 +97,9 @@ func (m *model) currentEvent() (Event, bool) {
 }
 
 func (m *model) View() string {
+	if m.collection {
+		return m.collectionView()
+	}
 	if len(m.packChoices) > 0 {
 		return m.packView()
 	}
@@ -134,6 +137,8 @@ func (m *model) View() string {
 		return panel.Padding(1, 2).Render(b.String())
 	}
 	switch m.phase {
+	case phaseStart:
+		return m.startView()
 	case phasePreview:
 		return m.preview()
 	case phaseRoundWon:

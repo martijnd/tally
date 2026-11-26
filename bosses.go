@@ -39,7 +39,7 @@ func (b boss) debuffs(c Card) bool {
 	return false
 }
 func (m *model) preview() string {
-	description := fmt.Sprintf("Stage %d · %s\nTarget %s · reward $%d\n", m.round/3+1, roundNames[m.round%3], commas(m.target()), 3+m.round%3+2*m.upgrades[dividends])
+	description := fmt.Sprintf("Stage %d · %s\nTarget %s · reward $%d\n", m.round/3+1, roundNames[m.round%3], commas(m.target()), m.roundReward())
 	if m.round%3 == 2 {
 		b := m.boss()
 		description += b.Name + " · " + b.Effect

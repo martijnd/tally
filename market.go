@@ -28,12 +28,17 @@ var upgradeLines = []struct{ Name, Desc string }{
 	{"Shelving", "+1 modifier offer"}, {"Coupon roll", "Rerolls start $1 cheaper"}, {"Savings book", "Interest cap +$5"}, {"Rehearsal", "+1 play"}, {"Wastebasket", "+1 discard"}, {"Folio", "+1 hand size"}, {"Gilding press", "Higher edition chance"}, {"Satchel", "+1 consumable slot"}, {"Cabinet", "+1 modifier slot"}, {"Dividend bond", "Round reward +$2"}, {"Resale license", "Sell modifiers for $1 more"}, {"Tuition grant", "Hand training costs $1 less"}, {"Wholesale license", "Modifier purchases cost $1 less"}, {"Bookbinding", "Packs cost $1 less"}, {"Stipend", "Earn $1 entering each shop"}, {"Patience fund", "Unused plays earn $1 more"},
 }
 
-func (m *model) bagSlots() int     { return 2 + m.upgrades[satchel] }
+func (m *model) bagSlots() int {
+	if m.restriction("no supplies") {
+		return 0
+	}
+	return 2 + m.upgrades[satchel] + m.bagBonus
+}
 func (m *model) upgradePrice() int { return 8 + 4*m.upgrades[m.upgradeOffer] }
 func (m *model) prepareMarket() {
 	var eligible []int
 	for i := range upgradeLines {
-		if m.upgrades[i] < 2 {
+		if m.upgrades[i] < 2 && (i != cabinet || max(m.unlockRound, m.round+1) >= 3) {
 			eligible = append(eligible, i)
 		}
 	}
@@ -87,6 +92,10 @@ func (m *model) packPrice() int {
 	return 4 + m.packSize*2 - m.upgrades[binding]
 }
 func (m *model) openPack() {
+	if m.restriction("no packs") {
+		m.msg = "Challenge forbids packs"
+		return
+	}
 	if m.packSold {
 		return
 	}
@@ -110,7 +119,12 @@ func (m *model) openPack() {
 	}
 	switch m.packKind {
 	case 0:
-		mods := catalog()
+		var mods []Modifier
+		for _, mod := range catalog() {
+			if m.modifierUnlocked(mod.Name) {
+				mods = append(mods, mod)
+			}
+		}
 		for _, i := range m.packRNG.Perm(len(mods))[:count] {
 			m.packChoices = append(m.packChoices, packChoice{mod: &mods[i]})
 		}

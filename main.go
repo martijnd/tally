@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"os"
+	"path/filepath"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -19,7 +20,9 @@ func runStream(seed, system string) *rand.Rand {
 func main() {
 	seed := flag.String("seed", "", "replay a named seed")
 	daily := flag.Bool("daily", false, "play today's shared UTC seed")
+	fresh := flag.Bool("new", false, "start a fresh run and keep your profile")
 	flag.Parse()
+	explicit := *seed != "" || *daily || *fresh
 	if *daily && *seed != "" {
 		fmt.Fprintln(os.Stderr, "choose either -seed or -daily")
 		os.Exit(2)
@@ -30,7 +33,17 @@ func main() {
 	if *seed == "" {
 		*seed = fmt.Sprintf("%016x", rand.Uint64())
 	}
-	p := tea.NewProgram(newModel(*seed), tea.WithAltScreen())
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	s, err := loadSession(filepath.Join(dir, "tally", "save.json"), *seed, explicit)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	p := tea.NewProgram(s, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

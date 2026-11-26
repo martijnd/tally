@@ -35,6 +35,7 @@ func TestPackSizesAndContents(t *testing.T) {
 }
 func TestUpgradeEligibility(t *testing.T) {
 	m := newModel("shop")
+	m.unlockRound = 3
 	m.money = 10000
 	for range 32 {
 		m.openShop()

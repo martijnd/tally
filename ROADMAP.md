@@ -51,7 +51,7 @@ Status: `[x]` done, `[ ]` to do.
 - [ ] Effect families: +chips, +mult, ×mult, money, retrigger cards, copy another modifier, create consumables, add cards to the deck, destroy cards, scale over time, probability-based effects
 - [ ] Probability system with a global "odds" multiplier that some items double
 - [ ] Sell value that grows on some modifiers
-- [ ] Stickers on modifiers (higher difficulties): can't be sold, expires after N rounds, costs $1 per round
+- [x] Stickers on modifiers (higher difficulties): can't be sold, expires after N rounds, costs $1 per round
 - [x] Slot count can be raised by upgrades and editions
 
 ## 5. Playing card upgrades
@@ -85,28 +85,28 @@ Status: `[x]` done, `[ ]` to do.
 
 ## 9. Starting decks
 
-- [ ] ~15 starting decks with one rule each, e.g. +1 discard, +$10, extra consumable slot, no face cards, suits merged into two colours, abstract deck with all cards enhanced
-- [ ] Deck select screen at the start of a run
+- [x] ~15 starting decks with one rule each, e.g. +1 discard, +$10, extra consumable slot, no face cards, suits merged into two colours, abstract deck with all cards enhanced
+- [x] Deck select screen at the start of a run
 
 ## 10. Difficulty levels
 
-- [ ] ~8 stacking difficulty levels, unlocked by winning on the previous one
-- [ ] Effects per level: no reward on the opening round, faster target scaling, stickers on shop modifiers, -1 discard, lower interest
-- [ ] Track the highest level won per deck
+- [x] ~8 stacking difficulty levels, unlocked by winning on the previous one
+- [x] Effects per level: no reward on the opening round, faster target scaling, stickers on shop modifiers, -1 discard, lower interest
+- [x] Track the highest level won per deck
 
 ## 11. Meta progression
 
-- [ ] Persistent save file (run in progress plus profile)
-- [ ] Resume an unfinished run
-- [ ] Collection screen: everything discovered, undiscovered shown as `?`
-- [ ] Unlock conditions for modifiers, decks and upgrades
-- [ ] Profile stats: best hand, most played hand, highest round, wins per deck and difficulty
-- [ ] Achievements
+- [x] Persistent save file (run in progress plus profile)
+- [x] Resume an unfinished run
+- [x] Collection screen: everything discovered, undiscovered shown as `?`
+- [x] Unlock conditions for modifiers, decks and upgrades
+- [x] Profile stats: best hand, most played hand, highest round, wins per deck and difficulty
+- [x] Achievements
 
 ## 12. Run options
 
 - [x] Seeded runs: show the seed, start a run from a seed, deterministic RNG per system (shop, deck, packs, bosses)
-- [ ] Challenge runs: ~20 hand-designed rule sets with fixed starting modifiers and restrictions
+- [x] Challenge runs: ~20 hand-designed rule sets with fixed starting modifiers and restrictions
 - [x] Daily run with a shared seed
 
 ## 13. UI and feel

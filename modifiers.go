@@ -15,6 +15,8 @@ type ScoreCtx struct {
 // Modifier changes scoring. card runs once per scoring card, hand runs once
 // after all cards, after runs when the play is finished.
 type Modifier struct {
+	Sticker string
+	Life    int
 	Edition int
 	Name    string
 	Desc    string

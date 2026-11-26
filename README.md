@@ -10,6 +10,8 @@ go build -o tally . && ./tally
 
 Use `go run . -seed NAME` to replay a seed or `go run . -daily` for the shared UTC daily run. Press `h` to view the seed and hand levels.
 
+Starting the game resumes your saved run. Use `-new` for a fresh run. At deck selection, use the arrows to choose a deck and difficulty, `c` to cycle challenges, and `a` to inspect your collection and career.
+
 ## How to play
 
 Each round you have a target score, 4 plays and 3 discards. Select up to 5 cards and play them as a poker hand.

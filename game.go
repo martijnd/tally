@@ -34,6 +34,7 @@ const (
 	phaseLost
 	phaseWon
 	phasePreview
+	phaseStart
 )
 
 // Event is one step of a scoring breakdown, revealed one tick at a time.
@@ -58,28 +59,34 @@ func tick() tea.Cmd {
 }
 
 type model struct {
-	tagQueue                                    []int
-	doubleTags, freePacks, freeRerolls          int
-	upgrades                                    [16]int
-	upgradeOffer, packKind, packSize, packPicks int
-	packSold                                    bool
-	packChoices                                 []packChoice
-	packRNG                                     *rand.Rand
-	viewingDeck, remainingDeck                  bool
-	handBonus, slotBonus                        int
-	stock                                       []Card
-	nextID                                      int
-	bag                                         []supply
-	stockItem                                   *supply
-	inventory                                   bool
-	itemRNG                                     *rand.Rand
-	bosses                                      []boss
-	bossDisabled                                bool
-	firstType                                   HandType
-	bestGain, skipped                           int
-	seed                                        string
-	deckRNG, shopRNG                            *rand.Rand
-	phase                                       phase
+	collection                                   bool
+	collectionGroup, collectionPage, unlockRound int
+	profile                                      *profile
+	deckID, difficulty, challengeID              int
+	bestDifficulty                               [15]int
+	discardBonus, playBonus, bagBonus            int
+	tagQueue                                     []int
+	doubleTags, freePacks, freeRerolls           int
+	upgrades                                     [16]int
+	upgradeOffer, packKind, packSize, packPicks  int
+	packSold                                     bool
+	packChoices                                  []packChoice
+	packRNG                                      *rand.Rand
+	viewingDeck, remainingDeck                   bool
+	handBonus, slotBonus                         int
+	stock                                        []Card
+	nextID                                       int
+	bag                                          []supply
+	stockItem                                    *supply
+	inventory                                    bool
+	itemRNG                                      *rand.Rand
+	bosses                                       []boss
+	bossDisabled                                 bool
+	firstType                                    HandType
+	bestGain, skipped                            int
+	seed                                         string
+	deckRNG, shopRNG                             *rand.Rand
+	phase                                        phase
 
 	round, score, money int
 	plays, discards     int
@@ -121,13 +128,19 @@ func newModel(seed string) *model {
 		m.bosses = append(m.bosses, regularBosses[i])
 	}
 	m.bosses = append(m.bosses[:7:7], append([]boss{finalBosses[rng.IntN(len(finalBosses))]}, m.bosses[7:]...)...)
-	m.phase = phasePreview
+	m.phase = phaseStart
 	return m
 }
 
 func (m *model) target() int {
 	stage := m.round / 3
 	base := targets[min(stage, 7)]
+	if m.difficulty >= 2 {
+		base += base * (1 + min(stage, 8)) / 8
+	}
+	if m.difficulty >= 7 || m.restriction("high targets") {
+		base *= 2
+	}
 	for i := 7; i < stage; i++ {
 		if base > int(^uint(0)>>1)/16 {
 			return int(^uint(0) >> 1)
@@ -141,7 +154,10 @@ func (m *model) startRound() {
 	m.deck = append([]Card(nil), m.stock...)
 	m.deckRNG.Shuffle(len(m.deck), func(i, j int) { m.deck[i], m.deck[j] = m.deck[j], m.deck[i] })
 	m.hand, m.selected = nil, nil
-	m.plays, m.discards = playsPerRound+m.upgrades[rehearsal], discardsPerRound+m.upgrades[wastebasket]
+	m.plays, m.discards = playsPerRound+m.upgrades[rehearsal]+m.playBonus, discardsPerRound+m.upgrades[wastebasket]+m.discardBonus
+	if m.difficulty >= 4 {
+		m.discards--
+	}
 	m.applyTags("round")
 	m.firstType = -1
 	b := m.boss()
@@ -150,6 +166,13 @@ func (m *model) startRound() {
 		m.plays--
 	case "discards":
 		m.discards -= b.Amount
+	}
+	m.discards = max(0, m.discards)
+	if m.restriction("no discards") {
+		m.discards = 0
+	}
+	if m.restriction("single play") {
+		m.plays = 1
 	}
 	m.score, m.shownScore = 0, 0
 	m.events, m.shown, m.scoring = nil, 0, nil
@@ -447,16 +470,21 @@ func (m *model) discard() {
 }
 
 func (m *model) winRound() {
-	m.rewards = []reward{{"round cleared", 3 + m.round%3 + 2*m.upgrades[dividends]}}
+	m.rewards = []reward{{"round cleared", m.roundReward()}}
 	if m.plays > 0 {
 		m.rewards = append(m.rewards, reward{fmt.Sprintf("%d unused plays", m.plays), m.plays * (1 + m.upgrades[patience])})
 	}
-	if interest := min(m.money/5, 5+5*m.upgrades[savings]); interest > 0 {
-		m.rewards = append(m.rewards, reward{"interest ($1 per $5)", interest})
+	divisor := 5
+	if m.difficulty >= 6 {
+		divisor = 10
+	}
+	if interest := min(m.money/divisor, 5+5*m.upgrades[savings]); interest > 0 && !m.restriction("no interest") {
+		m.rewards = append(m.rewards, reward{fmt.Sprintf("interest ($1 per $%d)", divisor), interest})
 	}
 	for _, r := range m.rewards {
 		m.money += r.amount
 	}
+	m.settleStickers()
 	m.applyTags("win")
 	m.phase = phaseRoundWon
 }
@@ -487,7 +515,7 @@ func (m *model) rollOffers() {
 	}
 	var pool []Modifier
 	for _, mod := range catalog() {
-		if !owned[mod.Name] {
+		if !owned[mod.Name] && m.modifierUnlocked(mod.Name) {
 			pool = append(pool, mod)
 		}
 	}
@@ -500,6 +528,7 @@ func (m *model) rollOffers() {
 			mod.Price += mod.Edition
 			mod.Desc = editions[mod.Edition] + " edition · " + mod.Desc
 		}
+		m.stickerOffer(&mod)
 		mod.Price = max(1, mod.Price-m.upgrades[wholesale])
 		m.offers = append(m.offers, &mod)
 	}
@@ -525,6 +554,10 @@ func (m *model) shopSelect() {
 	} else {
 		i := m.shopCursor - len(m.offers)
 		mod := m.mods[i]
+		if mod.Sticker == "Bound" {
+			m.msg = "Bound modifiers cannot be sold"
+			return
+		}
 		m.money += sellPrice(mod) + m.upgrades[resale]
 		m.mods = append(m.mods[:i], m.mods[i+1:]...)
 		m.msg = "sold " + mod.Name
@@ -545,6 +578,11 @@ func (m *model) clampShopCursor() {
 func (m *model) Init() tea.Cmd { return nil }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	defer func() {
+		if m.restriction("cash cap") {
+			m.money = min(8, m.money)
+		}
+	}()
 	switch msg := msg.(type) {
 	case tickMsg:
 		if m.phase == phaseScoring {
@@ -554,6 +592,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		key := msg.String()
 		if key == "ctrl+c" || key == "q" {
 			return m, tea.Quit
+		}
+		if m.collection {
+			m.collectionKey(key)
+			return m, nil
+		}
+		if key == "a" && m.phase != phaseScoring {
+			m.collection = true
+			return m, nil
 		}
 		if len(m.packChoices) > 0 {
 			m.pickPack(key)
@@ -580,6 +626,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.inventory = true
 			return m, nil
 		}
+		if m.phase == phaseStart {
+			m.startKey(key)
+			return m, nil
+		}
 		if key == "h" && m.phase != phaseScoring {
 			m.overview = !m.overview
 			return m, nil
@@ -601,7 +651,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case phasePreview:
 			if key == "enter" {
 				m.startRound()
-			} else if key == "s" && m.round%3 != 2 {
+			} else if key == "s" && m.round%3 != 2 && !m.restriction("no skips") {
 				m.earnTag()
 				m.skipped++
 				m.round++
@@ -612,6 +662,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if key == "enter" || key == " " {
 				if m.round == numRounds-1 {
 					m.phase = phaseWon
+					m.bestDifficulty[m.deckID] = max(m.bestDifficulty[m.deckID], m.difficulty+1)
 				} else {
 					m.openShop()
 				}
@@ -623,7 +674,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.openShop()
 			}
 			if key == "n" {
+				record := m.bestDifficulty
 				*m = *newModel(m.seed)
+				m.bestDifficulty = record
 			}
 		}
 	}
@@ -694,6 +747,10 @@ func (m *model) updateShop(key string) {
 			m.shopSelect()
 		}
 	case "r":
+		if m.restriction("no rerolls") {
+			m.msg = "Challenge forbids rerolls"
+			return
+		}
 		if m.money < m.rerollCharge() {
 			m.msg = "not enough money to reroll"
 			return

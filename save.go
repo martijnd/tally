@@ -22,11 +22,13 @@ type input struct {
 	Ticks int           `json:",omitempty"`
 }
 type recording struct {
-	Prefs       preferences
-	UnlockRound int
-	Seed        string
-	Opening     [15]int
-	Inputs      []input
+	LegacyEffects bool
+	LegacyPacks   bool
+	Prefs         preferences
+	UnlockRound   int
+	Seed          string
+	Opening       [15]int
+	Inputs        []input
 }
 type saveFile struct {
 	Version int
@@ -41,13 +43,13 @@ type session struct {
 }
 
 func loadSession(path, seed string, fresh bool) (*session, error) {
-	s := &session{path: path, data: saveFile{Version: 1}}
+	s := &session{path: path, data: saveFile{Version: 4}}
 	raw, err := os.ReadFile(path)
 	if err == nil {
 		if err = json.Unmarshal(raw, &s.data); err != nil {
 			return nil, err
 		}
-		if s.data.Version != 1 {
+		if s.data.Version != 1 && s.data.Version != 2 && s.data.Version != 3 && s.data.Version != 4 {
 			return nil, fmt.Errorf("unsupported save version %d", s.data.Version)
 		}
 	} else if !os.IsNotExist(err) {
@@ -57,11 +59,27 @@ func loadSession(path, seed string, fresh bool) (*session, error) {
 		s.data.Profile.Seen = map[string]bool{}
 	}
 	r := s.data.Run
+	if r != nil && s.data.Version < 4 {
+		r.LegacyEffects = true
+	}
+	if s.data.Version < 3 {
+		if r != nil {
+			r.LegacyPacks = true
+		}
+		for old, name := range consumableNames {
+			if s.data.Profile.Seen[old] {
+				s.data.Profile.Seen[name] = true
+				delete(s.data.Profile.Seen, old)
+			}
+		}
+	}
 	if fresh || r == nil {
 		r = &recording{Prefs: s.data.Profile.Prefs, Seed: seed, UnlockRound: s.data.Profile.Round, Opening: s.data.Profile.Highest}
 		s.data.Run = r
 	}
 	s.game = newModel(r.Seed)
+	s.game.legacyEffects = r.LegacyEffects
+	s.game.legacyPacks = r.LegacyPacks
 	s.game.prefs = r.Prefs
 	s.game.bestDifficulty = r.Opening
 	s.game.unlockRound = r.UnlockRound
@@ -69,13 +87,27 @@ func loadSession(path, seed string, fresh bool) (*session, error) {
 		if in.Mouse != nil {
 			s.game.Update(*in.Mouse)
 		} else if in.Key != nil {
-			s.game.Update(*in.Key)
+			if s.data.Version == 1 {
+				switch in.Key.String() {
+				case "a":
+					in.Key.Runes = []rune{'l'}
+				case "A":
+					in.Key.Runes = []rune{'a'}
+				case "l":
+					in.Key.Runes = nil // Previously unbound.
+				}
+			}
+			if in.Key.String() == "p" {
+				in.Key.Runes = []rune{'a'}
+			}
+			s.game.updateResolved(*in.Key)
 		} else {
 			for range in.Ticks {
 				s.game.Update(tickMsg{})
 			}
 		}
 	}
+	s.data.Version = 4
 	s.game.profile = &s.data.Profile
 	return s, nil
 }
@@ -119,7 +151,8 @@ func (s *session) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m := s.game
 	oldPrefs := m.prefs
 	before, counts := m.phase, m.timesPlayed
-	_, cmd := m.Update(msg)
+	msg = m.resolveKey(msg)
+	_, cmd := m.updateResolved(msg)
 	r := s.data.Run
 	if (r == nil || before == phaseWon || before == phaseLost) && m.phase == phaseStart {
 		m.prefs = oldPrefs

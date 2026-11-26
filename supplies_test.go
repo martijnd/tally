@@ -57,3 +57,21 @@ func TestBargainRequiresPaymentAndTarget(t *testing.T) {
 		t.Fatal("spacious edition did not grant space")
 	}
 }
+
+func TestConsumableNames(t *testing.T) {
+	names := map[string]bool{}
+	families := map[string]int{}
+	for _, it := range supplies() {
+		if it.Name == "" || names[it.Name] {
+			t.Fatalf("invalid consumable name %q", it.Name)
+		}
+		names[it.Name] = true
+		families[it.cardFamily()]++
+		if it.Action == "level" && HandType(it.Value) == Pair && it.Name != "Mercury" {
+			t.Fatal(it)
+		}
+	}
+	if families["Planet"] != 12 || families["Spectral"] != 18 || families["Tarot"] != 22 {
+		t.Fatal(families)
+	}
+}

@@ -63,7 +63,7 @@ func (m *model) chooseStart() {
 	case 10:
 		m.levels[Pair] = 2
 	case 11:
-		m.bag = append(m.bag, supplies()[0])
+		m.bag = append(m.bag, m.supplyPool()[0])
 	case 12:
 		for i := range m.stock {
 			if m.stock[i].Rank == 1 {
@@ -120,7 +120,7 @@ func (m *model) startView() string {
 		c := challenges[m.challengeID-1]
 		fmt.Fprintf(&b, "%s · start with %s · %s\n", c.Name, c.Mod, c.Rule)
 	}
-	b.WriteString("↑↓ deck · ←→ stake · c challenge · enter start · a collection · , settings")
+	b.WriteString("w/s deck · 1/2 stake · c challenge · e start · z collection · , settings")
 	return panel.Padding(1, 2).Render(b.String())
 }
 func (m *model) roundReward() int {

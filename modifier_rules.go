@@ -42,7 +42,7 @@ func expandedCatalog() []Modifier {
 		for tier, kind := range []string{"Reserve", "Beacon", "Lens", "Chronicle"} {
 			mod := Modifier{Name: name + " " + kind, Rarity: tier, Price: 4}
 			mod.Desc = []string{"+60 chips", "+8 mult", "×2 mult", "+2 mult per previous play this run"}[tier] + " on " + base.Name
-			mod.hand = func(_ *Modifier, ctx ScoreCtx, c, mu int) (string, int, int) {
+			mod.hand = func(_ *Modifier, ctx ScoreCtx, c int, mu float64) (string, int, float64) {
 				if int(ctx.Type) != i {
 					return "", c, mu
 				}
@@ -52,10 +52,10 @@ func expandedCatalog() []Modifier {
 				case 1:
 					return "+8 mult", c, mu + 8
 				case 2:
-					return "×2 mult", c, multiplyScore(mu, 2)
+					return "×2 mult", c, mu * 2
 				}
 				n := 2 * ctx.Previous
-				return fmt.Sprintf("+%d mult", n), c, mu + n
+				return fmt.Sprintf("+%d mult", n), c, mu + float64(n)
 			}
 			out = append(out, mod)
 		}
@@ -65,8 +65,8 @@ func expandedCatalog() []Modifier {
 			mod := Modifier{Name: trigger.Name + " " + kind, Price: 4, Rarity: tier, Trigger: trigger.Event, Effect: []string{"cash", "grow", "value"}[tier]}
 			mod.Desc = []string{"Gain $1", "Permanently gain +1 scoring mult", "Gain $1 sell value"}[tier] + " on " + trigger.Event
 			if tier == 1 {
-				mod.hand = func(m *Modifier, _ ScoreCtx, c, mu int) (string, int, int) {
-					return fmt.Sprintf("+%d mult", m.Counter), c, mu + m.Counter
+				mod.hand = func(m *Modifier, _ ScoreCtx, c int, mu float64) (string, int, float64) {
+					return fmt.Sprintf("+%d mult", m.Counter), c, mu + float64(m.Counter)
 				}
 			}
 			out = append(out, mod)

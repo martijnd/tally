@@ -36,12 +36,13 @@ const (
 
 // Event is one step of a scoring breakdown, revealed one tick at a time.
 type Event struct {
-	Label       string
-	Chips, Mult int // running totals after this step
-	Card        int // hand index, or -1
-	C           Card
-	HasCard     bool
-	Mod         int // modifier index, or -1
+	Label   string
+	Chips   int
+	Mult    float64
+	Card    int // hand index, or -1
+	C       Card
+	HasCard bool
+	Mod     int // modifier index, or -1
 }
 
 type reward struct {
@@ -50,6 +51,11 @@ type reward struct {
 }
 
 type model struct {
+	legacyEffects                                bool
+	lastSupply                                   supply
+	ectoUses                                     int
+	lastHand                                     HandType
+	legacyPacks                                  bool
 	prefs                                        preferences
 	settings                                     bool
 	collection                                   bool
@@ -297,8 +303,11 @@ func (m *model) play() bool {
 			m.emit("held")
 			if c.Enhancement == 3 {
 				held++
+				if !m.legacyEffects && c.Seal == 1 {
+					held++
+				}
 			}
-			if c.Seal == 3 && len(m.bag) < m.bagSlots() {
+			if m.legacyEffects && c.Seal == 3 && len(m.bag) < m.bagSlots() {
 				m.bag = append(m.bag, m.lesson())
 			}
 		}
@@ -307,13 +316,26 @@ func (m *model) play() bool {
 		m.emit("score")
 		if c.Seal == 2 {
 			m.money += 2
+			if !m.legacyEffects {
+				m.money++
+			}
 		}
-		if c.Enhancement == 6 {
+		if m.legacyEffects && c.Enhancement == 6 {
 			m.money++
 		}
 	}
+	m.lastHand = ht
 	m.timesPlayed[ht]++
-	ctx := ScoreCtx{Previous: m.timesPlayed[ht] - 1, OnScore: onScore, HeldPatient: held, Training: m.levels[ht], Type: ht, Scoring: scoringCards, Played: len(played), PlaysLeft: m.plays, Money: m.money}
+	ctx := ScoreCtx{Legacy: m.legacyEffects, Lucky: func() float64 {
+		mult := 0.
+		if m.itemRNG.IntN(5) < m.odds() {
+			mult = 20
+		}
+		if m.itemRNG.IntN(15) < m.odds() {
+			m.money += 20
+		}
+		return mult
+	}, Previous: m.timesPlayed[ht] - 1, OnScore: onScore, HeldPatient: held, Training: m.levels[ht], Type: ht, Scoring: scoringCards, Played: len(played), PlaysLeft: m.plays, Money: m.money}
 	m.events, m.gain = scoreHand(m.hand, scoringIdx, ht, mods, ctx)
 	if (b.Rule == "lock" && ht != m.firstType) || (b.Rule == "late" && firstPlay) || (b.Rule == "limit" && len(sel) > b.Amount) || (b.Rule == "minimum" && len(sel) < b.Amount) || (b.Rule == "ban" && int(ht) == b.Amount) {
 		m.gain = 0
@@ -329,7 +351,12 @@ func (m *model) play() bool {
 
 func scoreHand(hand []Card, scoring []int, ht HandType, mods []*Modifier, ctx ScoreCtx) ([]Event, int) {
 	b := trainedBase(ht, ctx.Training)
-	chips, mult := b.Chips, b.Mult
+	if ctx.Legacy {
+		b = handBases[ht]
+		b.Chips += ctx.Training * (5 + int(ht)*2)
+		b.Mult += ctx.Training * (1 + int(ht)/4)
+	}
+	chips, mult := b.Chips, float64(b.Mult)
 	ev := []Event{{Label: b.Name, Chips: chips, Mult: mult, Card: -1, Mod: -1}}
 
 	for _, hi := range scoring {
@@ -348,14 +375,24 @@ func scoreHand(hand []Card, scoring []int, ht HandType, mods []*Modifier, ctx Sc
 				ctx.OnScore(c)
 			}
 			chips += c.Chips()
-			chips, mult = editionScore(c.Edition, chips, mult)
+			chips, mult = editionScore(c.Edition, chips, mult, ctx.Legacy)
 			switch c.Enhancement {
 			case 1:
-				chips += 25
+				chips += 30
+				if ctx.Legacy {
+					chips -= 5
+				}
 			case 2:
-				mult += 3
+				mult += 4
+				if ctx.Legacy {
+					mult--
+				}
+			case 8:
+				if ctx.Lucky != nil {
+					mult += ctx.Lucky()
+				}
 			case 5:
-				mult = multiplyScore(mult, 2)
+				mult *= 2
 			}
 			ev = append(ev, Event{Label: fmt.Sprintf("+%d chips", c.Chips()), Chips: chips, Mult: mult, Card: hi, C: c, HasCard: true, Mod: -1})
 			for mi, mod := range mods {
@@ -368,19 +405,23 @@ func scoreHand(hand []Card, scoring []int, ht HandType, mods []*Modifier, ctx Sc
 					continue
 				}
 				chips += dc
-				mult += dm
+				mult += float64(dm)
 				ev = append(ev, Event{Label: mod.Name + " " + deltaLabel(dc, dm), Chips: chips, Mult: mult, Card: hi, C: c, HasCard: true, Mod: mi})
 			}
 		}
 
 	}
 	for range ctx.HeldPatient {
-		mult = multiplyScore(mult, 2)
-		ev = append(ev, Event{Label: "Patient ×2", Chips: chips, Mult: mult, Card: -1, Mod: -1})
+		factor := 1.5
+		if ctx.Legacy {
+			factor = 2
+		}
+		mult *= factor
+		ev = append(ev, Event{Label: fmt.Sprintf("Steel ×%g", factor), Chips: chips, Mult: mult, Card: -1, Mod: -1})
 	}
 	for mi, mod := range mods {
 		if mod.Edition > 0 && mod.Edition < 4 {
-			chips, mult = editionScore(mod.Edition, chips, mult)
+			chips, mult = editionScore(mod.Edition, chips, mult, ctx.Legacy)
 			ev = append(ev, Event{Label: editions[mod.Edition] + " " + mod.Name, Chips: chips, Mult: mult, Card: -1, Mod: mi})
 		}
 		source := scoringSource(mods, mi)
@@ -400,7 +441,11 @@ func scoreHand(hand []Card, scoring []int, ht HandType, mods []*Modifier, ctx Sc
 			mod.after(mod, ctx)
 		}
 	}
-	return ev, multiplyScore(chips, mult)
+	total := float64(chips) * mult
+	if total >= float64(int(^uint(0)>>1)) {
+		return ev, int(^uint(0) >> 1)
+	}
+	return ev, int(total)
 }
 
 func deltaLabel(dc, dm int) string {
@@ -424,6 +469,28 @@ func (m *model) finishPlay() {
 		}
 	}
 	m.scoring = nil
+	if !m.legacyEffects && m.score >= m.target() {
+		for i, c := range m.hand {
+			if m.selected[i] || m.boss().debuffs(c) {
+				continue
+			}
+			repeats := 1
+			if c.Seal == 1 {
+				repeats++
+			}
+			if c.Enhancement == 6 {
+				m.money += 3 * repeats
+			}
+			if c.Seal == 3 && len(m.bag) < m.bagSlots() {
+				for _, it := range supplies() {
+					if it.Action == "level" && it.Value == int(m.lastHand) {
+						m.bag = append(m.bag, it)
+						break
+					}
+				}
+			}
+		}
+	}
 	m.removeSelected()
 	if m.boss().Rule == "shed" && len(m.hand) > 0 {
 		m.selected[m.deckRNG.IntN(len(m.hand))] = true
@@ -453,7 +520,11 @@ func (m *model) discard() {
 	}
 	for _, i := range sel {
 		if m.hand[i].Seal == 4 && len(m.bag) < m.bagSlots() {
-			m.bag = append(m.bag, m.lesson())
+			if m.legacyEffects {
+				m.bag = append(m.bag, m.lesson())
+			} else {
+				m.bag = append(m.bag, m.randomSupply("Tarot", ""))
+			}
 		}
 	}
 	m.emit("discard")
@@ -485,10 +556,10 @@ func (m *model) winRound() {
 }
 
 func (m *model) openShop() {
-	items := supplies()
+	items := m.supplyPool()
 	for {
 		it := items[m.shopRNG.IntN(len(items))]
-		if it.Action != "bargain" || m.shopRNG.IntN(6) == 0 {
+		if m.supplyFamily(it) != "Spectral" || m.shopRNG.IntN(6) == 0 {
 			m.stockItem = &it
 			break
 		}
@@ -587,8 +658,8 @@ func (m *model) clampShopCursor() {
 
 func trainedBase(ht HandType, training int) handBase {
 	b := handBases[ht]
-	b.Chips += training * (5 + int(ht)*2)
-	b.Mult += training * (1 + int(ht)/4)
+	b.Chips += training * planetGrowth[ht].chips
+	b.Mult += training * planetGrowth[ht].mult
 	return b
 }
 

@@ -11,7 +11,7 @@ type supply struct {
 	Value                     int
 }
 
-func supplies() []supply {
+func oldSupplies() []supply {
 	out := []supply{
 		{"Tracing Paper", "Copy selected cards into the deck", "copy", 0},
 		{"Margin Knife", "Remove selected cards from the deck", "destroy", 0},
@@ -25,10 +25,10 @@ func supplies() []supply {
 	for i, name := range []string{"Spade Plate", "Heart Plate", "Diamond Plate", "Club Plate"} {
 		out = append(out, supply{name, "Set selected cards to " + name[:len(name)-6], "suit", i})
 	}
-	for i, name := range enhancements[1:] {
+	for i, name := range []string{"Weighted", "Loud", "Patient", "Prismatic", "Brittle", "Dividend", "Blank"} {
 		out = append(out, supply{name + " Ink", "Apply " + name + " enhancement to selected cards", "enhance", i + 1})
 	}
-	for i, name := range seals[1:] {
+	for i, name := range []string{"Echo", "Mint", "Archive", "Scrap"} {
 		out = append(out, supply{name + " Press", "Apply " + name + " seal to selected cards", "seal", i + 1})
 	}
 	for i, b := range bargains {
@@ -37,11 +37,14 @@ func supplies() []supply {
 	for i, b := range handBases {
 		out = append(out, supply{"Study of " + b.Name, "Raise " + b.Name + " one level", "level", i})
 	}
+	for i := range out {
+		out[i].Name = consumableNames[out[i].Name]
+	}
 	return out
 }
 
-var enhancements = []string{"plain", "Weighted", "Loud", "Patient", "Prismatic", "Brittle", "Dividend", "Blank"}
-var seals = []string{"none", "Echo", "Mint", "Archive", "Scrap"}
+var enhancements = []string{"plain", "Bonus", "Mult", "Steel", "Wild", "Glass", "Gold", "Stone", "Lucky"}
+var seals = []string{"none", "Red", "Gold", "Blue", "Purple"}
 
 func (m *model) editCards(item supply) bool {
 	indices := m.selectedIdx()
@@ -96,6 +99,20 @@ func (m *model) useSupply(i int) {
 		return
 	}
 	item := m.bag[i]
+	if !m.legacyEffects {
+		if m.applySupply(item) {
+			m.bag = slices.Delete(m.bag, i, i+1)
+			m.msg = "Used " + item.Name
+			if len(m.hand) == 0 && m.phase == phasePlay {
+				m.draw()
+				if len(m.hand) == 0 {
+					m.phase = phaseLost
+					m.inventory = false
+				}
+			}
+		}
+		return
+	}
 	switch item.Action {
 	case "bargain":
 		if !m.strikeBargain(bargains[item.Value]) {
@@ -133,7 +150,10 @@ func (m *model) useSupply(i int) {
 	m.msg = "Used " + item.Name
 }
 func (m *model) lesson() supply {
-	items := supplies()
+	if !m.legacyEffects {
+		return m.randomSupply("Planet", "")
+	}
+	items := oldSupplies()
 	return items[len(items)-len(handBases)+m.itemRNG.IntN(len(handBases))]
 }
 func (m *model) inventoryKey(key string) {
@@ -172,6 +192,6 @@ func (m *model) inventoryView() string {
 		}
 		fmt.Fprintf(&b, "%s [%s] %s\n", marker, map[bool]string{true: "x", false: " "}[m.selected[i]], label)
 	}
-	fmt.Fprintf(&b, "↑↓ target · space select · number use · i close\n%s", m.msg)
+	fmt.Fprintf(&b, "w/s target · space select · number use · f close\n%s", m.msg)
 	return panel.Padding(1, 2).Render(b.String())
 }

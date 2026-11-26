@@ -80,13 +80,16 @@ func TestContentEntryPoints(t *testing.T) {
 		}
 	}
 	for _, it := range supplies() {
-		if it.Action == "bargain" {
-			continue
-		}
+
 		m := newModel("supply")
 		m.round = 2
 		m.startRound()
 		m.selected[0] = true
+		m.lastSupply = supplies()[1]
+		m.startModifier("Ember")
+		if it.Action == "death" {
+			m.selected[1] = true
+		}
 		m.bag = []supply{it}
 		m.useSupply(0)
 		if len(m.bag) == 1 && m.bag[0] == it {
@@ -122,5 +125,57 @@ func TestFirstRunScoreExplanation(t *testing.T) {
 	m.scoreDone()
 	if result := m.viewScore(); !strings.Contains(result, "= 96") {
 		t.Fatal(result)
+	}
+}
+
+func TestPlayShortcutCase(t *testing.T) {
+	m := newModel("shortcut")
+	m.chooseStart()
+	m.startRound()
+	m.selected[0] = true
+	key := func(r rune) { m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}}) }
+	key('l')
+	if !m.collection || m.phase != phasePlay {
+		t.Fatal("l should open the collection")
+	}
+	key('l')
+	key('p')
+	if m.phase != phasePlay || m.plays != playsPerRound || !m.selected[0] {
+		t.Fatal("p should leave the selected hand untouched")
+	}
+	key('a')
+	if m.phase != phaseScoring || m.plays != playsPerRound-1 {
+		t.Fatal("lowercase a should play the selection")
+	}
+}
+
+func TestLeftHandControls(t *testing.T) {
+	m := newModel("left-hand")
+	key := func(r rune) { m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}}) }
+	key('e')
+	key('e')
+	m.cursor = 0
+	key('s')
+	key('x')
+	if m.cursor != 1 || !m.selected[1] {
+		t.Fatal("move or select failed")
+	}
+	key('1')
+	if m.cursor != 0 || !m.selected[0] {
+		t.Fatal("shift lost selection")
+	}
+	key('t')
+	if !m.bySuit {
+		t.Fatal("sort failed")
+	}
+	key('z')
+	key('z')
+	key('f')
+	key('f')
+	key('g')
+	key('g')
+	key('a')
+	if m.phase != phaseScoring {
+		t.Fatal("play shortcut failed")
 	}
 }

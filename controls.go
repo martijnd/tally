@@ -22,7 +22,61 @@ func (m *model) advanceScoring() tea.Cmd {
 
 func (m *model) Init() tea.Cmd { return nil }
 
+// Record the resolved key so new shortcuts cannot reinterpret an older run.
+func (m *model) resolveKey(msg tea.Msg) tea.Msg {
+	k, ok := msg.(tea.KeyMsg)
+	if !ok {
+		return msg
+	}
+	runeKey := func(r rune) tea.KeyMsg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}} }
+	switch k.String() {
+	case "p":
+		return nil // Old recordings may contain p, but live input ignores it.
+	case "w":
+		return tea.KeyMsg{Type: tea.KeyUp}
+	case "s":
+		if !m.settings && (m.inventory || m.overview || m.phase == phaseStart || m.phase == phaseShop || m.phase == phasePlay) {
+			return tea.KeyMsg{Type: tea.KeyDown}
+		}
+	case "t":
+		if !m.settings && m.phase == phasePlay {
+			return runeKey('s')
+		}
+		if !m.settings && m.phase == phaseShop {
+			return runeKey('u')
+		}
+	case "e":
+		if m.phase != phaseWon {
+			return tea.KeyMsg{Type: tea.KeyEnter}
+		}
+	case "f":
+		return runeKey('i')
+	case "g":
+		return runeKey('h')
+	case "z":
+		return runeKey('l')
+	case "1", "2":
+		if !m.inventory && len(m.packChoices) == 0 {
+			left := k.String() == "1"
+			if m.collection || m.phase == phaseStart {
+				if left {
+					return tea.KeyMsg{Type: tea.KeyLeft}
+				}
+				return tea.KeyMsg{Type: tea.KeyRight}
+			}
+			if left {
+				return runeKey('[')
+			}
+			return runeKey(']')
+		}
+
+	}
+	return k
+}
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	return m.updateResolved(m.resolveKey(msg))
+}
+func (m *model) updateResolved(msg tea.Msg) (tea.Model, tea.Cmd) {
 	defer func() {
 		if m.restriction("cash cap") {
 			m.money = min(8, m.money)
@@ -55,7 +109,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.collectionKey(key)
 			return m, nil
 		}
-		if key == "a" && m.phase != phaseScoring {
+		if key == "l" && m.phase != phaseScoring {
 			m.collection = true
 			return m, nil
 		}
@@ -161,7 +215,7 @@ func (m *model) updatePlay(key string) tea.Cmd {
 		}
 		m.selected[m.cursor] = !m.selected[m.cursor]
 		m.msg = ""
-	case "p", "enter":
+	case "a", "enter":
 		if m.play() {
 			if m.prefs.Speed == 2 {
 				return m.scoreDone()

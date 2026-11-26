@@ -8,9 +8,9 @@ go run .
 go build -o tally . && ./tally
 ```
 
-Use `go run . -seed NAME` to replay a seed or `go run . -daily` for the shared UTC daily run. Press `h` to view the seed and hand levels.
+Use `go run . -seed NAME` to replay a seed or `go run . -daily` for the shared UTC daily run. Press `g` to view the seed and hand levels.
 
-Starting the game resumes your saved run. Use `-new` for a fresh run. At deck selection, use the arrows to choose a Deck and Stake, `c` to cycle challenges, and `a` to inspect your collection and career.
+Starting the game resumes your saved run. Use `-new` for a fresh run. At deck selection, use `w/s` to choose a Deck and `1/2` to choose a Stake, `c` to cycle challenges, and `z` to inspect your collection and career.
 
 Celestial Packs contain Planet cards that level up poker hands. Arcana Packs contain Tarot cards for deck edits and utility effects. Spectral Packs contain powerful cards with a cost. Buffoon Packs offer Jokers, and Standard Packs offer playing cards.
 
@@ -24,17 +24,19 @@ Clear all eight Antes, each with a Small Blind, Big Blind, and Boss Blind, to wi
 
 | Key | Action |
 |---|---|
-| ↑↓ / j k | move |
+| w / s or ↑ / ↓ | move |
 | space / x | select card |
-| p / enter | play selected |
+| a / enter | play selected |
 | d | discard selected |
-| s | sort by rank or suit |
+| t | sort by rank or suit |
 | c | clear selection |
-| h / v / i | inspect run, deck, or consumables |
-| [ / ] | move the current card or owned shop Joker |
-| b / u in shop | open a pack or redeem a Voucher |
+| g / v / f | inspect run, deck, or consumables |
+| 1 / 2 | move the current card or owned shop Joker |
+| b / t in shop | open a pack or redeem a Voucher |
 | , | configure animation speed, theme, and bell |
-| enter while scoring | finish the animation |
+| e / enter while scoring | finish the animation |
+| e | confirm a menu choice or shop purchase |
+| z | open or close the Collection |
 | q | save and quit |
 
 Click a card to select it, or click the score panel to play. The scroll wheel moves the cursor.

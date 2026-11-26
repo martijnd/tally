@@ -1,15 +1,25 @@
 package main
 
-var editions = []string{"standard", "Etched", "Flared", "Mirrored", "Spacious"}
+var editions = []string{"standard", "Foil", "Holographic", "Polychrome", "Negative"}
 
-func editionScore(edition, chips, mult int) (int, int) {
+func editionScore(edition, chips int, mult float64, legacy bool) (int, float64) {
 	switch edition {
 	case 1:
-		chips += 40
+		chips += 50
+		if legacy {
+			chips -= 10
+		}
 	case 2:
-		mult += 6
+		mult += 10
+		if legacy {
+			mult -= 4
+		}
 	case 3:
-		mult = multiplyScore(mult, 2)
+		if legacy {
+			mult *= 2
+		} else {
+			mult *= 1.5
+		}
 	}
 	return chips, mult
 }

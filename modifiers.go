@@ -3,6 +3,8 @@ package main
 import "fmt"
 
 type ScoreCtx struct {
+	Legacy      bool
+	Lucky       func() float64
 	Previous    int
 	OnScore     func(Card)
 	HeldPatient int
@@ -29,7 +31,7 @@ type Modifier struct {
 	Counter                          int
 
 	card  func(m *Modifier, c Card) (chips, mult int)
-	hand  func(m *Modifier, ctx ScoreCtx, chips, mult int) (label string, newChips, newMult int)
+	hand  func(m *Modifier, ctx ScoreCtx, chips int, mult float64) (label string, newChips int, newMult float64)
 	after func(m *Modifier, ctx ScoreCtx)
 }
 
@@ -45,7 +47,7 @@ func catalog() []Modifier {
 	mods := []Modifier{
 		{
 			Name: "Ember", Desc: "+4 mult", Price: 4,
-			hand: func(_ *Modifier, _ ScoreCtx, c, mu int) (string, int, int) {
+			hand: func(_ *Modifier, _ ScoreCtx, c int, mu float64) (string, int, float64) {
 				return "+4 mult", c, mu + 4
 			},
 		},
@@ -69,35 +71,35 @@ func catalog() []Modifier {
 		},
 		{
 			Name: "Momentum", Desc: "+1 mult for every hand played while owned", Price: 6,
-			hand: func(m *Modifier, _ ScoreCtx, c, mu int) (string, int, int) {
+			hand: func(m *Modifier, _ ScoreCtx, c int, mu float64) (string, int, float64) {
 				if m.Counter == 0 {
 					return "", c, mu
 				}
-				return fmt.Sprintf("+%d mult", m.Counter), c, mu + m.Counter
+				return fmt.Sprintf("+%d mult", m.Counter), c, mu + float64(m.Counter)
 			},
 			after: func(m *Modifier, _ ScoreCtx) { m.Counter++ },
 		},
 		{
 			Name: "Twins", Desc: "×2 mult if the hand contains a pair", Price: 7,
-			hand: func(_ *Modifier, ctx ScoreCtx, c, mu int) (string, int, int) {
+			hand: func(_ *Modifier, ctx ScoreCtx, c int, mu float64) (string, int, float64) {
 				if !containsPair(ctx.Type) {
 					return "", c, mu
 				}
-				return "×2 mult", c, multiplyScore(mu, 2)
+				return "×2 mult", c, mu * 2
 			},
 		},
 		{
 			Name: "Last Call", Desc: "×3 mult on the last play of a round", Price: 6,
-			hand: func(_ *Modifier, ctx ScoreCtx, c, mu int) (string, int, int) {
+			hand: func(_ *Modifier, ctx ScoreCtx, c int, mu float64) (string, int, float64) {
 				if ctx.PlaysLeft != 0 {
 					return "", c, mu
 				}
-				return "×3 mult", c, multiplyScore(mu, 3)
+				return "×3 mult", c, mu * 3
 			},
 		},
 		{
 			Name: "Small Change", Desc: "+50 chips if every scoring card is 5 or lower", Price: 5,
-			hand: func(_ *Modifier, ctx ScoreCtx, c, mu int) (string, int, int) {
+			hand: func(_ *Modifier, ctx ScoreCtx, c int, mu float64) (string, int, float64) {
 				for _, card := range ctx.Scoring {
 					if card.Order() > 5 {
 						return "", c, mu
@@ -108,17 +110,17 @@ func catalog() []Modifier {
 		},
 		{
 			Name: "Stockpile", Desc: "+1 mult for every $3 you hold", Price: 5,
-			hand: func(_ *Modifier, ctx ScoreCtx, c, mu int) (string, int, int) {
+			hand: func(_ *Modifier, ctx ScoreCtx, c int, mu float64) (string, int, float64) {
 				n := ctx.Money / 3
 				if n == 0 {
 					return "", c, mu
 				}
-				return fmt.Sprintf("+%d mult", n), c, mu + n
+				return fmt.Sprintf("+%d mult", n), c, mu + float64(n)
 			},
 		},
 		{
 			Name: "Wide Net", Desc: "+30 chips when you play 5 cards", Price: 4,
-			hand: func(_ *Modifier, ctx ScoreCtx, c, mu int) (string, int, int) {
+			hand: func(_ *Modifier, ctx ScoreCtx, c int, mu float64) (string, int, float64) {
 				if ctx.Played != 5 {
 					return "", c, mu
 				}

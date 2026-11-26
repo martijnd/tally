@@ -16,7 +16,7 @@ func (m *model) modifierUnlocked(name string) bool {
 }
 func (m *model) collectionKey(k string) {
 	switch k {
-	case "a", "esc":
+	case "l", "esc":
 		m.collection = false
 	case "tab":
 		m.collectionGroup = (m.collectionGroup + 1) % 11
@@ -112,6 +112,6 @@ func (m *model) collectionView() string {
 		}
 		fmt.Fprintln(&b, name)
 	}
-	b.WriteString("tab category · ←→ page · a close")
+	b.WriteString("tab category · 1/2 page · z close")
 	return panel.Padding(1, 2).Render(b.String())
 }

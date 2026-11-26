@@ -130,7 +130,7 @@ func (m *model) View() string {
 			fmt.Fprintf(&b, "%d %s  ", i+1, boss.Name)
 		}
 		b.WriteString("\n")
-		b.WriteString("Hand overview · h to close\n")
+		b.WriteString("Hand overview · g to close\n")
 		for i := range handBases {
 			base := trainedBase(HandType(i), m.levels[i])
 			cursor := " "
@@ -140,7 +140,7 @@ func (m *model) View() string {
 			fmt.Fprintf(&b, "%s %-18s Lv %d   %d × %d   played %d\n", cursor, base.Name, 1+m.levels[i], base.Chips, base.Mult, m.timesPlayed[i])
 		}
 		if m.phase == phaseShop {
-			fmt.Fprintf(&b, "↑↓ choose · enter train ($%d) · wallet $%d", 4-m.upgrades[tuition], m.money)
+			fmt.Fprintf(&b, "w/s choose · e train ($%d) · wallet $%d", 4-m.upgrades[tuition], m.money)
 		}
 		return panel.Padding(1, 2).Render(b.String())
 	}
@@ -178,7 +178,7 @@ func (m *model) viewTable() string {
 	if m.msg != "" {
 		msg = " " + sWarn.Render(m.msg)
 	}
-	help := sDim.Render(" ↑↓ move · space select · p play · d discard · [ ] shift · s sort · c clear · v deck · i consumables · h hands · , settings · q quit")
+	help := sDim.Render(" w/s move · space select · a play · d discard · 1/2 shift · t sort · c clear · v deck · z collection · f consumables · g hands · , settings · q quit")
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, m.viewMods(w), msg, help)
 }
 
@@ -256,7 +256,7 @@ func (m *model) viewScore() string {
 				lines = append(lines, "")
 			}
 			last := evs[len(evs)-1]
-			lines = append(lines, sChips.Render(commas(last.Chips))+sDim.Render(" chips  × ")+sMult.Render(commas(last.Mult))+sDim.Render(" mult"))
+			lines = append(lines, sChips.Render(commas(last.Chips))+sDim.Render(" chips  × ")+sMult.Render(strconv.FormatFloat(last.Mult, 'f', -1, 64))+sDim.Render(" mult"))
 			if m.shown == len(m.events) {
 				lines = append(lines, sDim.Render("= ")+sBold.Render(commas(m.gain)))
 			}
@@ -275,7 +275,7 @@ func (m *model) viewScore() string {
 			fmt.Sprintf("%d base + %d card chips", base.Chips, cardChips),
 			fmt.Sprintf("%d × %d = %s before effects", base.Chips+cardChips, base.Mult, commas(multiplyScore(base.Chips+cardChips, base.Mult))),
 			"",
-			sDim.Render("p to play · d to discard"),
+			sDim.Render("a to play · d to discard"),
 		)
 	default:
 		lines = append(lines, sDim.Render("select up to 5 cards"))
@@ -357,9 +357,9 @@ func (m *model) viewRoundWon() string {
 	b.WriteString(sDim.Render(strings.Repeat("─", 30)) + "\n")
 	b.WriteString(spread(sBold.Render("money"), sGood.Render(fmt.Sprintf("$%d", m.money)), 30))
 	b.WriteString("\n\n")
-	next := "enter → shop"
+	next := "e → shop"
 	if m.round == numRounds-1 {
-		next = "enter → finish"
+		next = "e → finish"
 	}
 	b.WriteString(sDim.Render(next))
 	return panel.Padding(1, 3).Render(b.String())
@@ -411,15 +411,15 @@ func (m *model) viewShop() string {
 		b.WriteString("\n" + sWarn.Render(m.msg) + "\n")
 	}
 	if m.stockItem != nil {
-		fmt.Fprintf(&b, "\ni consumables · %s ($3)", m.stockItem.Name)
+		fmt.Fprintf(&b, "\nf consumables · %s ($3)", m.stockItem.Name)
 	}
 	if !m.packSold {
 		fmt.Fprintf(&b, "\nb open %s %s pack ($%d)", packSizes[m.packSize], packKinds[m.packKind], m.packPrice())
 	}
 	if i := m.upgradeOffer; i >= 0 {
-		fmt.Fprintf(&b, "\nu redeem %s %d Voucher ($%d) · %s", upgradeLines[i].Name, m.upgrades[i]+1, m.upgradePrice(), upgradeLines[i].Desc)
+		fmt.Fprintf(&b, "\nt redeem %s %d Voucher ($%d) · %s", upgradeLines[i].Name, m.upgrades[i]+1, m.upgradePrice(), upgradeLines[i].Desc)
 	}
-	b.WriteString("\n" + sDim.Render(fmt.Sprintf("↑↓ move · enter buy/sell · [ ] reorder owned · r reroll ($%d) · c next Blind · v deck · i consumables · h hands · , settings · q quit", m.rerollCharge())))
+	b.WriteString("\n" + sDim.Render(fmt.Sprintf("w/s move · e buy/sell · 1/2 reorder owned · r reroll ($%d) · c next Blind · v deck · z collection · f consumables · g hands · , settings · q quit", m.rerollCharge())))
 	return panel.Padding(1, 2).Render(b.String())
 }
 
@@ -436,6 +436,6 @@ func (m *model) viewEnd() string {
 	if m.phase == phaseWon {
 		b.WriteString("e continue endless\n")
 	}
-	b.WriteString("\n" + sDim.Render("n replay seed · v deck · i consumables · h hands · , settings · q quit"))
+	b.WriteString("\n" + sDim.Render("n replay seed · v deck · z collection · f consumables · g hands · , settings · q quit"))
 	return panel.Padding(1, 3).Render(b.String())
 }

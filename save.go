@@ -80,6 +80,9 @@ func loadSession(path, seed string, fresh bool) (*session, error) {
 	}
 	s.game = newModel(r.Seed)
 	s.game.legacyEffects = r.LegacyEffects
+	if r.LegacyEffects {
+		s.game.restoreLegacyBosses()
+	}
 	s.game.legacyPacks = r.LegacyPacks
 	s.game.prefs = r.Prefs
 	s.game.bestDifficulty = r.Opening

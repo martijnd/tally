@@ -213,6 +213,9 @@ func (m *model) updatePlay(key string) tea.Cmd {
 			m.msg = fmt.Sprintf("you can select up to %d", maxSelect)
 			return nil
 		}
+		if m.boss().Rule == "bell" && m.hand[m.cursor].ID == m.forcedID {
+			return nil
+		}
 		m.selected[m.cursor] = !m.selected[m.cursor]
 		m.msg = ""
 	case "a", "enter":
@@ -240,7 +243,7 @@ func (m *model) updatePlay(key string) tea.Cmd {
 		m.sortHand()
 	case "c":
 		for i := range m.selected {
-			m.selected[i] = false
+			m.selected[i] = m.boss().Rule == "bell" && m.hand[i].ID == m.forcedID
 		}
 	}
 	return nil

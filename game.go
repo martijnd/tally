@@ -52,6 +52,11 @@ type reward struct {
 }
 
 type model struct {
+	hidden, playedAnte                           map[int]bool
+	roundTypes                                   [len(handBases)]bool
+	forcedID, disabledJoker, trackedAnte         int
+	oxHand                                       HandType
+	firstDraw, afterHand                         bool
 	discoveries                                  int
 	legacyEffects                                bool
 	lastSupply                                   supply
@@ -124,11 +129,7 @@ func newModel(seed string) *model {
 		seed: seed, deckRNG: runStream(seed, "deck"), shopRNG: runStream(seed, "shop"),
 		money: 4, stock: newDeck(), nextID: 52, itemRNG: runStream(seed, "items"), packRNG: runStream(seed, "packs"),
 	}
-	rng := runStream(seed, "boss")
-	for _, i := range rng.Perm(len(regularBosses)) {
-		m.bosses = append(m.bosses, regularBosses[i])
-	}
-	m.bosses = append(m.bosses[:7:7], append([]boss{finalBosses[rng.IntN(len(finalBosses))]}, m.bosses[7:]...)...)
+	m.bosses = append(m.bosses, m.nextBoss(0))
 	m.phase = phaseStart
 	return m
 }
@@ -156,7 +157,13 @@ func (m *model) target() int {
 		if m.deckIs(13) || m.restriction("high targets") {
 			base *= 2
 		}
-		target := base * (1 + float64(m.round%3)/2)
+		factor := 1 + float64(m.round%3)/2
+		if b := m.boss(); b.Rule == "target" {
+			factor = float64(b.Amount)
+		} else if b.Rule == "needle" {
+			factor = 1
+		}
+		target := base * factor
 		if target >= float64(math.MaxInt) {
 			return math.MaxInt
 		}
@@ -188,8 +195,34 @@ func (m *model) startRound() {
 	}
 	m.applyTags("round")
 	m.firstType = -1
+	m.firstDraw = true
+	m.hidden = map[int]bool{}
+	m.roundTypes = [len(handBases)]bool{}
+	m.forcedID = 0
+	m.disabledJoker = -1
+	m.afterHand = false
+	if m.playedAnte == nil || m.trackedAnte != m.round/3 {
+		m.playedAnte = map[int]bool{}
+		m.trackedAnte = m.round / 3
+	}
+	m.oxHand = HighCard
+	for i, n := range m.timesPlayed {
+		if n > m.timesPlayed[m.oxHand] {
+			m.oxHand = HandType(i)
+		}
+	}
 	b := m.boss()
 	switch b.Rule {
+	case "water":
+		m.discards = 0
+	case "needle":
+		m.plays = 1
+	case "heart":
+		if len(m.mods) > 0 {
+			m.disabledJoker = m.deckRNG.IntN(len(m.mods))
+		}
+	case "acorn":
+		m.deckRNG.Shuffle(len(m.mods), func(i, j int) { m.mods[i], m.mods[j] = m.mods[j], m.mods[i] })
 	case "plays", "finalmute":
 		m.plays--
 	case "discards":
@@ -212,12 +245,22 @@ func (m *model) startRound() {
 }
 
 func (m *model) draw() {
-	for len(m.hand) < m.drawLimit() && len(m.deck) > 0 {
+	b := m.boss()
+	drawn := 0
+	for len(m.deck) > 0 && ((b.Rule == "serpent" && !m.firstDraw && drawn < 3) || ((b.Rule != "serpent" || m.firstDraw) && len(m.hand) < m.drawLimit())) {
+		drawn++
+		c := m.deck[0]
+		if (b.Rule == "house" && m.firstDraw) || (b.Rule == "fish" && m.afterHand) || (b.Rule == "mark" && c.Rank >= 11) || (b.Rule == "wheel" && m.deckRNG.IntN(7) < m.odds()) {
+			m.hidden[c.ID] = true
+		}
 		m.hand = append(m.hand, m.deck[0])
 		m.selected = append(m.selected, false)
 		m.deck = m.deck[1:]
 	}
 	m.sortHand()
+	m.firstDraw = false
+	m.afterHand = false
+	m.forceCard()
 }
 
 func (m *model) sortHand() {
@@ -301,7 +344,7 @@ func (m *model) play() bool {
 	b := m.boss()
 	valid := local[:0]
 	for _, i := range local {
-		if !b.debuffs(played[i]) {
+		if !m.cardDebuffed(played[i]) {
 			valid = append(valid, i)
 		}
 	}
@@ -311,6 +354,10 @@ func (m *model) play() bool {
 		m.firstType = ht
 	}
 	mods := m.mods
+	if b.Rule == "heart" && m.disabledJoker >= 0 && m.disabledJoker < len(mods) {
+		mods = slices.Clone(mods)
+		mods[m.disabledJoker] = &Modifier{}
+	}
 	if b.Rule == "mute" || b.Rule == "finalmute" {
 		mods = nil
 	}
@@ -328,7 +375,7 @@ func (m *model) play() bool {
 
 	held := 0
 	for i, c := range m.hand {
-		if !m.selected[i] && !b.debuffs(c) {
+		if !m.selected[i] && !m.cardDebuffed(c) {
 			m.emit("held")
 			if c.Enhancement == 3 {
 				held++
@@ -354,8 +401,19 @@ func (m *model) play() bool {
 		}
 	}
 	m.lastHand = ht
+	previousType := m.roundTypes[ht]
+	m.roundTypes[ht] = true
+	if b.Rule == "arm" {
+		m.levels[ht] = max(0, m.levels[ht]-1)
+	}
+	if b.Rule == "tooth" {
+		m.money -= len(sel)
+	}
+	if b.Rule == "ox" && ht == m.oxHand {
+		m.money = 0
+	}
 	m.timesPlayed[ht]++
-	ctx := ScoreCtx{Plasma: m.deckIs(13), Legacy: m.legacyEffects, Lucky: func() float64 {
+	ctx := ScoreCtx{Flint: b.Rule == "flint", Plasma: m.deckIs(13), Legacy: m.legacyEffects, Lucky: func() float64 {
 		mult := 0.
 		if m.itemRNG.IntN(5) < m.odds() {
 			mult = 20
@@ -366,7 +424,7 @@ func (m *model) play() bool {
 		return mult
 	}, Previous: m.timesPlayed[ht] - 1, OnScore: onScore, HeldPatient: held, Training: m.levels[ht], Type: ht, Scoring: scoringCards, Played: len(played), PlaysLeft: m.plays, Money: m.money}
 	m.events, m.gain = scoreHand(m.hand, scoringIdx, ht, mods, ctx)
-	if (b.Rule == "lock" && ht != m.firstType) || (b.Rule == "late" && firstPlay) || (b.Rule == "limit" && len(sel) > b.Amount) || (b.Rule == "minimum" && len(sel) < b.Amount) || (b.Rule == "ban" && int(ht) == b.Amount) {
+	if (b.Rule == "eye" && previousType) || (b.Rule == "lock" && ht != m.firstType) || (b.Rule == "late" && firstPlay) || (b.Rule == "limit" && len(sel) > b.Amount) || (b.Rule == "minimum" && len(sel) < b.Amount) || (b.Rule == "ban" && int(ht) == b.Amount) {
 		m.gain = 0
 		m.events = append(m.events, Event{Label: b.Name, Card: -1, Mod: -1})
 	}
@@ -386,6 +444,10 @@ func scoreHand(hand []Card, scoring []int, ht HandType, mods []*Modifier, ctx Sc
 		b.Mult += ctx.Training * (1 + int(ht)/4)
 	}
 	chips, mult := b.Chips, float64(b.Mult)
+	if ctx.Flint {
+		chips = (chips + 1) / 2
+		mult = math.Ceil(mult / 2)
+	}
 	ev := []Event{{Label: b.Name, Chips: chips, Mult: mult, Card: -1, Mod: -1}}
 
 	for _, hi := range scoring {
@@ -504,7 +566,7 @@ func (m *model) finishPlay() {
 	m.scoring = nil
 	if !m.legacyEffects && m.score >= m.target() {
 		for i, c := range m.hand {
-			if m.selected[i] || m.boss().debuffs(c) {
+			if m.selected[i] || m.cardDebuffed(c) {
 				continue
 			}
 			repeats := 1
@@ -525,9 +587,16 @@ func (m *model) finishPlay() {
 		}
 	}
 	m.removeSelected()
-	if m.boss().Rule == "shed" && len(m.hand) > 0 {
+	for range min(m.boss().Amount, len(m.hand)) {
+		if m.boss().Rule != "shed" {
+			break
+		}
 		m.selected[m.deckRNG.IntN(len(m.hand))] = true
 		m.removeSelected()
+	}
+	m.afterHand = true
+	if m.boss().Rule == "heart" && len(m.mods) > 0 {
+		m.disabledJoker = m.deckRNG.IntN(len(m.mods))
 	}
 	m.draw()
 
@@ -683,6 +752,9 @@ func (m *model) shopSelect() {
 		}
 		m.money += sellPrice(mod) + m.upgrades[resale]
 		m.mods = append(m.mods[:i], m.mods[i+1:]...)
+		if m.boss().Rule == "leaf" {
+			m.bossDisabled = true
+		}
 		m.emit("sell")
 		m.msg = "sold " + mod.Name
 	}
@@ -719,4 +791,13 @@ func multiplyScore(a, b int) int {
 		return limit
 	}
 	return a * b
+}
+
+func (m *model) restoreLegacyBosses() {
+	m.bosses = nil
+	rng := runStream(m.seed, "boss")
+	for _, i := range rng.Perm(len(legacyRegularBosses)) {
+		m.bosses = append(m.bosses, legacyRegularBosses[i])
+	}
+	m.bosses = append(m.bosses[:7:7], append([]boss{legacyFinalBosses[rng.IntN(len(legacyFinalBosses))]}, m.bosses[7:]...)...)
 }

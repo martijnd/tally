@@ -115,3 +115,35 @@ func TestStakeCurvesAndDeckRules(t *testing.T) {
 		}
 	}
 }
+
+func TestShowdownBossesAndEligibility(t *testing.T) {
+	m := newModel("boss rotation")
+	for stage := 0; stage < 32; stage++ {
+		b := m.stageBoss(stage)
+		final := false
+		for _, f := range finalBosses {
+			if f == b {
+				final = true
+			}
+		}
+		if final != (stage%8 == 7) {
+			t.Fatal(stage, b)
+		}
+	}
+	for _, tt := range []struct {
+		name                    string
+		target, plays, discards int
+	}{{"The Wall", 1200, 4, 3}, {"The Needle", 300, 1, 3}, {"The Water", 600, 4, 0}, {"Violet Vessel", 1800, 4, 3}} {
+		m := newModel(tt.name)
+		m.round = 2
+		for _, b := range append(append([]boss{}, regularBosses...), finalBosses...) {
+			if b.Name == tt.name {
+				m.bosses[0] = b
+			}
+		}
+		m.startRound()
+		if m.target() != tt.target || m.plays != tt.plays || m.discards != tt.discards {
+			t.Fatal(tt.name)
+		}
+	}
+}

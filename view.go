@@ -214,10 +214,10 @@ func (m *model) viewHand() string {
 		}
 
 		row := cur + bar + indent + rankStyle.Render(fmt.Sprintf("%2s", c.Label())) + " " + suit(c)
-		if m.boss().debuffs(c) {
+		if m.cardDebuffed(c) {
 			tail = "debuffed"
 		}
-		if m.boss().Rule == "blind" && m.phase == phasePlay {
+		if m.faceDown(c) && m.phase == phasePlay {
 			row = cur + bar + indent + "??"
 		}
 		b.WriteString(spread(row, tail, leftW))
@@ -235,8 +235,13 @@ func (m *model) viewScore() string {
 	lines = append(lines, sDim.Render("SCORE"), "")
 
 	sel := m.selectedCards()
-	if m.boss().Rule == "blind" && m.phase == phasePlay {
-		sel = nil
+	if m.phase == phasePlay {
+		for _, c := range sel {
+			if m.faceDown(c) {
+				sel = nil
+				break
+			}
+		}
 	}
 	const window = 5
 
@@ -266,7 +271,7 @@ func (m *model) viewScore() string {
 		base := trainedBase(ht, m.levels[ht])
 		cardChips := 0
 		for _, i := range scoring {
-			if !m.boss().debuffs(sel[i]) {
+			if !m.cardDebuffed(sel[i]) {
 				cardChips += sel[i].Chips()
 			}
 		}
@@ -329,6 +334,12 @@ func (m *model) viewMods(w int) string {
 		}
 		mod := m.mods[i]
 		label := mod.Name
+		if m.boss().Rule == "acorn" {
+			label = "??"
+		}
+		if m.boss().Rule == "heart" && i == m.disabledJoker {
+			label += " (disabled)"
+		}
 		if mod.Counter > 0 {
 			label += fmt.Sprintf(" +%d", mod.Counter)
 		}

@@ -187,7 +187,7 @@ func (m *model) inventoryView() string {
 			marker = ">"
 		}
 		label := "face down"
-		if m.boss().Rule != "blind" {
+		if !m.faceDown(c) {
 			label = fmt.Sprintf("%s %s · %s · %s edition · %s seal", c.Label(), suit(c), enhancements[c.Enhancement], editions[c.Edition], seals[c.Seal])
 		}
 		fmt.Fprintf(&b, "%s [%s] %s\n", marker, map[bool]string{true: "x", false: " "}[m.selected[i]], label)

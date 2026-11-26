@@ -3,6 +3,7 @@ package main
 import "fmt"
 
 type ScoreCtx struct {
+	Plasma      bool
 	Legacy      bool
 	Lucky       func() float64
 	Previous    int

@@ -43,6 +43,11 @@ func TestContentEntryPoints(t *testing.T) {
 	for i := range startingDecks {
 		m := newModel("starts")
 		m.unlockRound = 24
+		m.discoveries = 100
+		m.bestDifficulty[0] = 8
+		for j := 0; j < 5; j++ {
+			m.bestDifficulty[j] = 8
+		}
 		m.deckID = i
 		m.startKey("enter")
 		m.startRound()

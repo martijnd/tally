@@ -42,13 +42,76 @@ func TestEndlessTransition(t *testing.T) {
 		t.Fatal("missing post-victory shop")
 	}
 	m.updateShop("c")
-	if m.phase != phasePreview || m.round != 24 || m.target() != 24000 {
+	if m.phase != phasePreview || m.round != 24 || m.target() != 110000 {
 		t.Fatal("incorrect endless opening")
 	}
 	for i := 24; i < 300; i++ {
 		m.round = i
 		if m.target() <= 0 {
 			t.Fatal("target overflow")
+		}
+	}
+}
+
+func TestStakeCurvesAndDeckRules(t *testing.T) {
+	for _, tc := range []struct{ stake, stage, base int }{{0, 1, 300}, {0, 8, 50000}, {2, 8, 100000}, {5, 8, 200000}, {0, 9, 110000}} {
+		m := newModel("curve")
+		m.round = 3 * (tc.stage - 1)
+		m.difficulty = tc.stake
+		if m.target() != tc.base {
+			t.Fatal(tc, m.target())
+		}
+	}
+	m := newModel("plasma")
+	m.deckID = 13
+	m.chooseStart()
+	if m.target() != 600 {
+		t.Fatal(m.target())
+	}
+	_, score := scoreHand([]Card{{Rank: 3}}, []int{0}, HighCard, nil, ScoreCtx{Plasma: true})
+	if score != 16 {
+		t.Fatal(score)
+	}
+	for _, i := range []int{5, 6, 7, 8, 9, 11, 14} {
+		m := newModel("decks")
+		m.deckID = i
+		m.chooseStart()
+		switch i {
+		case 5:
+			if m.bagSlots() != 3 || len(m.bag) != 2 || m.bag[1].Name != "The Fool" {
+				t.Fatal("Magic")
+			}
+		case 6:
+			m.timesPlayed[Pair] = 4
+			m.openShop()
+			m.packKind = 2
+			m.money = 20
+			m.openPack()
+			if m.packChoices[0].item.Name != "Mercury" {
+				t.Fatal("Telescope")
+			}
+		case 7:
+			if m.bag[0].Name != "Hex" {
+				t.Fatal("Ghost")
+			}
+		case 8:
+			if len(m.stock) != 40 {
+				t.Fatal("Abandoned")
+			}
+		case 9:
+			for _, c := range m.stock {
+				if c.Suit > 1 {
+					t.Fatal("Checkered")
+				}
+			}
+		case 11:
+			if m.drawLimit() != 10 || m.modSlots() != 4 {
+				t.Fatal("Painted")
+			}
+		case 14:
+			if reflect.DeepEqual(m.stock, newDeck()) {
+				t.Fatal("Erratic")
+			}
 		}
 	}
 }

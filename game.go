@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"slices"
 	"sort"
@@ -51,6 +52,7 @@ type reward struct {
 }
 
 type model struct {
+	discoveries                                  int
 	legacyEffects                                bool
 	lastSupply                                   supply
 	ectoUses                                     int
@@ -133,6 +135,33 @@ func newModel(seed string) *model {
 
 func (m *model) target() int {
 	stage := m.round / 3
+	if !m.legacyEffects {
+		curves := [3][8]int{{300, 800, 2000, 5000, 11000, 20000, 35000, 50000}, {300, 900, 2600, 8000, 20000, 36000, 60000, 100000}, {300, 1000, 3200, 9000, 25000, 60000, 110000, 200000}}
+		curve := 0
+		if m.difficulty >= 5 {
+			curve = 2
+		} else if m.difficulty >= 2 {
+			curve = 1
+		}
+		base := float64(curves[curve][min(stage, 7)])
+		if stage >= 8 {
+			c := float64(stage - 7)
+			base *= math.Pow(1.6+math.Pow(0.75*c, 1+0.2*c), c)
+			if math.IsInf(base, 1) {
+				return math.MaxInt
+			}
+			unit := math.Pow(10, math.Floor(math.Log10(base))-1)
+			base = math.Floor(base/unit) * unit
+		}
+		if m.deckIs(13) || m.restriction("high targets") {
+			base *= 2
+		}
+		target := base * (1 + float64(m.round%3)/2)
+		if target >= float64(math.MaxInt) {
+			return math.MaxInt
+		}
+		return int(target)
+	}
 	base := targets[min(stage, 7)]
 	if m.difficulty >= 2 {
 		base += base * (1 + min(stage, 8)) / 8
@@ -326,7 +355,7 @@ func (m *model) play() bool {
 	}
 	m.lastHand = ht
 	m.timesPlayed[ht]++
-	ctx := ScoreCtx{Legacy: m.legacyEffects, Lucky: func() float64 {
+	ctx := ScoreCtx{Plasma: m.deckIs(13), Legacy: m.legacyEffects, Lucky: func() float64 {
 		mult := 0.
 		if m.itemRNG.IntN(5) < m.odds() {
 			mult = 20
@@ -442,6 +471,10 @@ func scoreHand(hand []Card, scoring []int, ht HandType, mods []*Modifier, ctx Sc
 		}
 	}
 	total := float64(chips) * mult
+	if ctx.Plasma {
+		balanced := math.Floor((float64(chips) + mult) / 2)
+		total = balanced * balanced
+	}
 	if total >= float64(int(^uint(0)>>1)) {
 		return ev, int(^uint(0) >> 1)
 	}
@@ -536,14 +569,24 @@ func (m *model) discard() {
 
 func (m *model) winRound() {
 	m.rewards = []reward{{"round cleared", m.roundReward()}}
+	if m.deckIs(12) && m.round%3 == 2 {
+		m.doubleTags++
+	}
+	if m.deckIs(3) && m.discards > 0 {
+		m.rewards = append(m.rewards, reward{"unused discards", m.discards})
+	}
+	handPay := 1 + m.upgrades[patience]
+	if m.deckIs(3) {
+		handPay++
+	}
 	if m.plays > 0 {
-		m.rewards = append(m.rewards, reward{fmt.Sprintf("%d unused hands", m.plays), m.plays * (1 + m.upgrades[patience])})
+		m.rewards = append(m.rewards, reward{fmt.Sprintf("%d unused hands", m.plays), m.plays * handPay})
 	}
 	divisor := 5
-	if m.difficulty >= 6 {
+	if m.legacyEffects && m.difficulty >= 6 {
 		divisor = 10
 	}
-	if interest := min(m.money/divisor, 5+5*m.upgrades[savings]); interest > 0 && !m.restriction("no interest") {
+	if interest := min(m.money/divisor, 5+5*m.upgrades[savings]); interest > 0 && !m.deckIs(3) && !m.restriction("no interest") {
 		m.rewards = append(m.rewards, reward{fmt.Sprintf("interest ($1 per $%d)", divisor), interest})
 	}
 	for _, r := range m.rewards {
@@ -559,7 +602,7 @@ func (m *model) openShop() {
 	items := m.supplyPool()
 	for {
 		it := items[m.shopRNG.IntN(len(items))]
-		if m.supplyFamily(it) != "Spectral" || m.shopRNG.IntN(6) == 0 {
+		if m.supplyFamily(it) != "Spectral" || ((m.legacyEffects || m.deckIs(7)) && m.shopRNG.IntN(6) == 0 && (m.legacyEffects || (it.Name != "Black Hole" && it.Name != "The Soul"))) {
 			m.stockItem = &it
 			break
 		}

@@ -13,7 +13,7 @@ func TestResumeScoringAndProfile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, k := range []tea.KeyType{tea.KeyDown, tea.KeyEnter, tea.KeyEnter, tea.KeySpace, tea.KeyEnter} {
+	for _, k := range []tea.KeyType{tea.KeyEnter, tea.KeyEnter, tea.KeySpace, tea.KeyEnter} {
 		s.Update(tea.KeyMsg{Type: k})
 	}
 	if s.game.phase != phaseScoring || s.game.discards != 4 {
@@ -51,7 +51,7 @@ func TestUnlocksAndStickers(t *testing.T) {
 	m.difficulty = 7
 	m.startKey("enter")
 	m.startRound()
-	if m.discards != 2 || m.roundReward() != 0 || m.target() <= 300 {
+	if m.discards != 2 || m.roundReward() != 0 || m.target() != 300 {
 		t.Fatal("difficulty rules missing")
 	}
 	m.mods = []*Modifier{{Name: "Lease", Sticker: "Rent"}, {Name: "Ink", Sticker: "Fading", Life: 1}, {Name: "Lock", Sticker: "Bound"}}

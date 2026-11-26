@@ -115,3 +115,35 @@ func (m *model) collectionView() string {
 	b.WriteString("tab category · 1/2 page · z close")
 	return panel.Padding(1, 2).Render(b.String())
 }
+
+var discoveryGoals = [...]int{0, 20, 50, 75, 100}
+
+func (m *model) deckAvailable(i int) bool {
+	if m.legacyEffects {
+		return m.unlockRound >= m.deckUnlock(i)
+	}
+	if i < 5 {
+		return m.discoveries >= discoveryGoals[i]
+	}
+	if i < 10 {
+		return m.bestDifficulty[i-5] > 0
+	}
+	for _, best := range m.bestDifficulty {
+		if best >= i-8 {
+			return true
+		}
+	}
+	return false
+}
+func (m *model) unlockHint(i int) string {
+	if m.legacyEffects {
+		return fmt.Sprintf("Unlock at round %d", m.deckUnlock(i))
+	}
+	if i < 5 {
+		return fmt.Sprintf("Discover %d items", discoveryGoals[i])
+	}
+	if i < 10 {
+		return "Win with " + startingDecks[i-5].Name
+	}
+	return "Win on " + stakeNames[i-9] + " Stake or higher"
+}

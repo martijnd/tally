@@ -140,6 +140,22 @@ func (m *model) openPack() {
 				items = append(items, it)
 			}
 		}
+		if m.packKind == 2 && m.deckIs(6) {
+			best := 0
+			for i, n := range m.timesPlayed {
+				if n > m.timesPlayed[best] {
+					best = i
+				}
+			}
+			for i, it := range items {
+				if it.Value == best {
+					m.packChoices = append(m.packChoices, packChoice{item: &it})
+					items = append(items[:i], items[i+1:]...)
+					count--
+					break
+				}
+			}
+		}
 		for _, i := range m.packRNG.Perm(len(items))[:count] {
 			m.packChoices = append(m.packChoices, packChoice{item: &items[i]})
 		}

@@ -22,6 +22,7 @@ type input struct {
 	Ticks int           `json:",omitempty"`
 }
 type recording struct {
+	Discoveries   int
 	LegacyEffects bool
 	LegacyPacks   bool
 	Prefs         preferences
@@ -74,7 +75,7 @@ func loadSession(path, seed string, fresh bool) (*session, error) {
 		}
 	}
 	if fresh || r == nil {
-		r = &recording{Prefs: s.data.Profile.Prefs, Seed: seed, UnlockRound: s.data.Profile.Round, Opening: s.data.Profile.Highest}
+		r = &recording{Prefs: s.data.Profile.Prefs, Discoveries: len(s.data.Profile.Seen), Seed: seed, UnlockRound: s.data.Profile.Round, Opening: s.data.Profile.Highest}
 		s.data.Run = r
 	}
 	s.game = newModel(r.Seed)
@@ -82,6 +83,7 @@ func loadSession(path, seed string, fresh bool) (*session, error) {
 	s.game.legacyPacks = r.LegacyPacks
 	s.game.prefs = r.Prefs
 	s.game.bestDifficulty = r.Opening
+	s.game.discoveries = r.Discoveries
 	s.game.unlockRound = r.UnlockRound
 	for _, in := range r.Inputs {
 		if in.Mouse != nil {
@@ -156,8 +158,9 @@ func (s *session) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	r := s.data.Run
 	if (r == nil || before == phaseWon || before == phaseLost) && m.phase == phaseStart {
 		m.prefs = oldPrefs
+		m.discoveries = len(s.data.Profile.Seen)
 		m.unlockRound = s.data.Profile.Round
-		r = &recording{Prefs: m.prefs, Seed: m.seed, UnlockRound: m.unlockRound, Opening: m.bestDifficulty}
+		r = &recording{Prefs: m.prefs, Discoveries: m.discoveries, Seed: m.seed, UnlockRound: m.unlockRound, Opening: m.bestDifficulty}
 		s.data.Run = r
 	}
 	m.profile = &s.data.Profile
@@ -202,7 +205,7 @@ func (s *session) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	p.Best = max(p.Best, m.bestGain)
 	if m.phase != phaseStart {
 		p.Round = max(p.Round, m.round+1)
-		p.Seen[startingDecks[m.deckID].Name] = true
+		p.Seen[m.decks()[m.deckID].Name] = true
 		if m.challengeID > 0 {
 			p.Seen[challenges[m.challengeID-1].Name] = true
 		}

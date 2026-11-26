@@ -96,6 +96,7 @@ func (m *model) currentEvent() (Event, bool) {
 func (m *model) View() string {
 	if m.overview {
 		var b strings.Builder
+		fmt.Fprintf(&b, "Seed %q\n", m.seed)
 		b.WriteString("Hand overview · h to close\n")
 		for i := range handBases {
 			base := trainedBase(HandType(i), m.levels[i])
@@ -111,6 +112,8 @@ func (m *model) View() string {
 		return panel.Padding(1, 2).Render(b.String())
 	}
 	switch m.phase {
+	case phasePreview:
+		return m.preview()
 	case phaseRoundWon:
 		return m.viewRoundWon()
 	case phaseShop:
@@ -128,7 +131,7 @@ func (m *model) viewTable() string {
 	w := lipgloss.Width(body)
 
 	header := spread(
-		sAccent.Render(" tally")+sDim.Render(fmt.Sprintf("  stage %d/8 · %s", m.round/3+1, []string{"opening", "main", "boss"}[m.round%3])),
+		sAccent.Render(" tally")+sDim.Render(fmt.Sprintf("  stage %d/8 · %s", m.round/3+1, roundNames[m.round%3]+" "+m.boss().Name)),
 		sDim.Render("target ")+sBold.Render(commas(m.target()))+" ",
 		w,
 	)
@@ -137,7 +140,7 @@ func (m *model) viewTable() string {
 	if m.msg != "" {
 		msg = " " + sWarn.Render(m.msg)
 	}
-	help := sDim.Render(" ↑↓ move · space select · p play · d discard · s sort · c clear · h hands · q quit")
+	help := sDim.Render(" ↑↓ move · space select · p play · d discard · [ ] shift · s sort · c clear · h hands · q quit")
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, m.viewMods(w), msg, help)
 }
 
@@ -173,6 +176,12 @@ func (m *model) viewHand() string {
 		}
 
 		row := cur + bar + indent + rankStyle.Render(fmt.Sprintf("%2s", c.Label())) + " " + suit(c)
+		if m.boss().debuffs(c) {
+			tail = "debuffed"
+		}
+		if m.boss().Rule == "blind" && m.phase == phasePlay {
+			row = cur + bar + indent + "??"
+		}
 		b.WriteString(spread(row, tail, leftW))
 		b.WriteString("\n")
 	}
@@ -188,6 +197,9 @@ func (m *model) viewScore() string {
 	lines = append(lines, sDim.Render("SCORE"), "")
 
 	sel := m.selectedCards()
+	if m.boss().Rule == "blind" && m.phase == phasePlay {
+		sel = nil
+	}
 	const window = 5
 
 	switch {
@@ -366,6 +378,10 @@ func (m *model) viewEnd() string {
 		b.WriteString(sBad.Render("out of plays") + "\n\n")
 		b.WriteString(sText.Render(fmt.Sprintf("round %d: %s / %s", m.round+1, commas(m.score), commas(m.target()))) + "\n")
 	}
-	b.WriteString("\n" + sDim.Render("n new run · h hands · q quit"))
+	fmt.Fprintf(&b, "\nBest play %s · rounds skipped %d\n", commas(m.bestGain), m.skipped)
+	if m.phase == phaseWon {
+		b.WriteString("e continue endless\n")
+	}
+	b.WriteString("\n" + sDim.Render("n replay seed · h hands · q quit"))
 	return panel.Padding(1, 3).Render(b.String())
 }

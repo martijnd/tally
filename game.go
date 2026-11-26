@@ -32,6 +32,7 @@ const (
 	phaseShop
 	phaseLost
 	phaseWon
+	phasePreview
 )
 
 // Event is one step of a scoring breakdown, revealed one tick at a time.
@@ -56,8 +57,13 @@ func tick() tea.Cmd {
 }
 
 type model struct {
-	rng   *rand.Rand
-	phase phase
+	bosses            []boss
+	bossDisabled      bool
+	firstType         HandType
+	bestGain, skipped int
+	seed              string
+	deckRNG, shopRNG  *rand.Rand
+	phase             phase
 
 	round, score, money int
 	plays, discards     int
@@ -89,22 +95,45 @@ type model struct {
 	msg                 string
 }
 
-func newModel() *model {
+func newModel(seed string) *model {
 	m := &model{
-		rng:   rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0)),
+		seed: seed, deckRNG: runStream(seed, "deck"), shopRNG: runStream(seed, "shop"),
 		money: 4,
 	}
-	m.startRound()
+	rng := runStream(seed, "boss")
+	for _, i := range rng.Perm(len(regularBosses)) {
+		m.bosses = append(m.bosses, regularBosses[i])
+	}
+	m.bosses = append(m.bosses[:7:7], append([]boss{finalBosses[rng.IntN(len(finalBosses))]}, m.bosses[7:]...)...)
+	m.phase = phasePreview
 	return m
 }
 
-func (m *model) target() int { return targets[m.round/3] * (2 + m.round%3) / 2 }
+func (m *model) target() int {
+	stage := m.round / 3
+	base := targets[min(stage, 7)]
+	for i := 7; i < stage; i++ {
+		if base > int(^uint(0)>>1)/16 {
+			return int(^uint(0) >> 1)
+		}
+		base *= 4
+	}
+	return base * (2 + m.round%3) / 2
+}
 
 func (m *model) startRound() {
 	m.deck = newDeck()
-	m.rng.Shuffle(len(m.deck), func(i, j int) { m.deck[i], m.deck[j] = m.deck[j], m.deck[i] })
+	m.deckRNG.Shuffle(len(m.deck), func(i, j int) { m.deck[i], m.deck[j] = m.deck[j], m.deck[i] })
 	m.hand, m.selected = nil, nil
 	m.plays, m.discards = playsPerRound, discardsPerRound
+	m.firstType = -1
+	b := m.boss()
+	switch b.Rule {
+	case "plays", "finalmute":
+		m.plays--
+	case "discards":
+		m.discards -= b.Amount
+	}
 	m.score, m.shownScore = 0, 0
 	m.events, m.shown, m.scoring = nil, 0, nil
 	m.cursor = 0
@@ -114,7 +143,11 @@ func (m *model) startRound() {
 }
 
 func (m *model) draw() {
-	for len(m.hand) < handSize && len(m.deck) > 0 {
+	limit := handSize
+	if b := m.boss(); b.Rule == "size" {
+		limit -= b.Amount
+	}
+	for len(m.hand) < limit && len(m.deck) > 0 {
 		m.hand = append(m.hand, m.deck[0])
 		m.selected = append(m.selected, false)
 		m.deck = m.deck[1:]
@@ -200,6 +233,24 @@ func (m *model) play() tea.Cmd {
 	played := m.selectedCards()
 	ht, local := evaluate(played)
 
+	b := m.boss()
+	valid := local[:0]
+	for _, i := range local {
+		if !b.debuffs(played[i]) {
+			valid = append(valid, i)
+		}
+	}
+	local = valid
+	if m.firstType < 0 {
+		m.firstType = ht
+	}
+	mods := m.mods
+	if b.Rule == "mute" || b.Rule == "finalmute" {
+		mods = nil
+	}
+	if b.Rule == "toll" {
+		m.money = max(0, m.money-b.Amount)
+	}
 	scoringIdx := make([]int, len(local))
 	scoringCards := make([]Card, len(local))
 	m.scoring = map[int]bool{}
@@ -211,7 +262,12 @@ func (m *model) play() tea.Cmd {
 
 	m.timesPlayed[ht]++
 	ctx := ScoreCtx{Training: m.levels[ht], Type: ht, Scoring: scoringCards, Played: len(played), PlaysLeft: m.plays, Money: m.money}
-	m.events, m.gain = scoreHand(m.hand, scoringIdx, ht, m.mods, ctx)
+	m.events, m.gain = scoreHand(m.hand, scoringIdx, ht, mods, ctx)
+	if (b.Rule == "lock" && ht != m.firstType) || (b.Rule == "late" && m.plays == playsPerRound-1) || (b.Rule == "limit" && len(sel) > b.Amount) || (b.Rule == "minimum" && len(sel) < b.Amount) || (b.Rule == "ban" && int(ht) == b.Amount) {
+		m.gain = 0
+		m.events = append(m.events, Event{Label: b.Name, Card: -1, Mod: -1})
+	}
+	m.bestGain = max(m.bestGain, m.gain)
 	m.shown, m.step = 0, 0
 	m.baseScore = m.score
 	m.msg = ""
@@ -291,6 +347,10 @@ func (m *model) finishPlay() {
 	m.shownScore = m.score
 	m.scoring = nil
 	m.removeSelected()
+	if m.boss().Rule == "shed" && len(m.hand) > 0 {
+		m.selected[m.deckRNG.IntN(len(m.hand))] = true
+		m.removeSelected()
+	}
 	m.draw()
 
 	switch {
@@ -352,7 +412,7 @@ func (m *model) rollOffers() {
 			pool = append(pool, mod)
 		}
 	}
-	m.rng.Shuffle(len(pool), func(i, j int) { pool[i], pool[j] = pool[j], pool[i] })
+	m.shopRNG.Shuffle(len(pool), func(i, j int) { pool[i], pool[j] = pool[j], pool[i] })
 	m.offers = nil
 	for i := 0; i < shopOffers && i < len(pool); i++ {
 		mod := pool[i]
@@ -427,6 +487,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		switch m.phase {
+		case phasePreview:
+			if key == "enter" {
+				m.startRound()
+			} else if key == "s" && m.round%3 != 2 {
+				m.money += 5
+				m.skipped++
+				m.round++
+			}
 		case phasePlay:
 			return m, m.updatePlay(key)
 		case phaseRoundWon:
@@ -440,8 +508,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case phaseShop:
 			m.updateShop(key)
 		case phaseLost, phaseWon:
+			if key == "e" && m.phase == phaseWon {
+				m.openShop()
+			}
 			if key == "n" {
-				*m = *newModel()
+				*m = *newModel(m.seed)
 			}
 		}
 	}
@@ -472,6 +543,16 @@ func (m *model) updatePlay(key string) tea.Cmd {
 		return m.play()
 	case "d":
 		m.discard()
+	case "[", "]":
+		dest := m.cursor - 1
+		if key == "]" {
+			dest = m.cursor + 1
+		}
+		if dest >= 0 && dest < len(m.hand) {
+			m.hand[m.cursor], m.hand[dest] = m.hand[dest], m.hand[m.cursor]
+			m.selected[m.cursor], m.selected[dest] = m.selected[dest], m.selected[m.cursor]
+			m.cursor = dest
+		}
 	case "s":
 		m.bySuit = !m.bySuit
 		m.sortHand()
@@ -509,7 +590,8 @@ func (m *model) updateShop(key string) {
 		m.msg = "rerolled"
 	case "c", "n":
 		m.round++
-		m.startRound()
+		m.bossDisabled = false
+		m.phase = phasePreview
 	}
 }
 

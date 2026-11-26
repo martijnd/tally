@@ -20,19 +20,19 @@ Status: `[x]` done, `[ ]` to do.
 
 - [x] Stages: each stage has three rounds (opening, main, boss) with score multipliers of 1×, 1.5× and 2× the stage base
 - [x] Stage base targets that scale steeply, win after stage 8
-- [ ] Endless mode after a win, with targets scaling much faster
-- [ ] Skip a non-boss round in exchange for a **tag** (a one-off reward)
-- [ ] Round preview screen: target, reward, boss effect, skip tag
+- [x] Endless mode after a win, with targets scaling much faster
+- [x] Skip a non-boss round in exchange for a **tag** (a one-off reward)
+- [x] Round preview screen: target, reward, boss effect, skip tag
 - [x] Rewards differ per round type (opening $3, main $4, boss $5)
 - [ ] Interest cap that can be raised by upgrades
-- [ ] Game over when out of plays below target; keep run stats
+- [x] Game over when out of plays below target; keep run stats
 
 ## 2. Boss rounds
 
-- [ ] Boss pool of ~25 original effects, one drawn per stage, no repeats in a run
-- [ ] Effect types: debuff a suit, debuff face cards, hand size -1, only one hand type allowed, cards drawn face down, discard random cards after each play, first hand scores nothing, money drains per play, modifiers disabled
-- [ ] Final-stage bosses: harsher effects, used only on stage 8
-- [ ] Boss effect shown in the header and on affected cards
+- [x] Boss pool of ~25 original effects, one drawn per stage, no repeats in a run
+- [x] Effect types: debuff a suit, debuff face cards, hand size -1, only one hand type allowed, cards drawn face down, discard random cards after each play, first hand scores nothing, money drains per play, modifiers disabled
+- [x] Final-stage bosses: harsher effects, used only on stage 8
+- [x] Boss effect shown in the header and on affected cards
 - [ ] Some modifiers or consumables can disable the boss effect
 
 ## 3. Hand levels
@@ -107,7 +107,7 @@ Status: `[x]` done, `[ ]` to do.
 
 - [ ] Seeded runs: show the seed, start a run from a seed, deterministic RNG per system (shop, deck, packs, bosses)
 - [ ] Challenge runs: ~20 hand-designed rule sets with fixed starting modifiers and restrictions
-- [ ] Daily run with a shared seed
+- [x] Daily run with a shared seed
 
 ## 13. UI and feel
 
@@ -116,7 +116,7 @@ Status: `[x]` done, `[ ]` to do.
 - [ ] Modifier and consumable detail on hover or cursor
 - [ ] Mouse support
 - [ ] Faster or skippable scoring animation, configurable speed
-- [ ] Rearrange cards in hand by hand, not only sort
+- [x] Rearrange cards in hand by hand, not only sort
 - [ ] Big-number formatting for endless mode (1.2e15 and up)
 - [ ] Sound bell on big scores (optional), colour themes, light terminal support
 - [ ] Settings screen

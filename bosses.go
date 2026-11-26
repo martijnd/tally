@@ -21,6 +21,9 @@ func (m *model) boss() boss {
 	return m.bosses[m.round/3]
 }
 func (b boss) debuffs(c Card) bool {
+	if c.Enhancement == 7 {
+		return false
+	}
 	switch b.Rule {
 	case "suit":
 		return c.Suit == b.Amount

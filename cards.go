@@ -6,12 +6,16 @@ import (
 )
 
 type Card struct {
-	Rank int // 1 = A, 11 = J, 12 = Q, 13 = K
-	Suit int // 0..3
+	ID, Enhancement, Edition, Seal int
+	Rank                           int // 1 = A, 11 = J, 12 = Q, 13 = K
+	Suit                           int // 0..3
 }
 
 // Label is the rank as shown on screen.
 func (c Card) Label() string {
+	if c.Enhancement == 7 {
+		return "■"
+	}
 	switch c.Rank {
 	case 1:
 		return "A"
@@ -35,6 +39,9 @@ func (c Card) Order() int {
 
 // Chips is what the card adds when it scores: A = 11, J/Q/K = 10.
 func (c Card) Chips() int {
+	if c.Enhancement == 7 {
+		return 50
+	}
 	switch {
 	case c.Rank == 1:
 		return 11
@@ -48,7 +55,7 @@ func newDeck() []Card {
 	d := make([]Card, 0, 52)
 	for s := 0; s < 4; s++ {
 		for r := 1; r <= 13; r++ {
-			d = append(d, Card{Rank: r, Suit: s})
+			d = append(d, Card{ID: len(d) + 1, Rank: r, Suit: s})
 		}
 	}
 	return d
@@ -92,6 +99,27 @@ var handBases = [...]handBase{
 // evaluate returns the hand type for 1-5 cards and the indices of the cards
 // that count toward the score, in ascending order.
 func evaluate(cards []Card) (HandType, []int) {
+	var ranked []Card
+	var indices, blanks []int
+	for i, c := range cards {
+		if c.Enhancement == 7 {
+			blanks = append(blanks, i)
+		} else {
+			ranked = append(ranked, c)
+			indices = append(indices, i)
+		}
+	}
+	if len(blanks) > 0 {
+		if len(ranked) == 0 {
+			return HighCard, blanks
+		}
+		kind, scored := evaluate(ranked)
+		for _, i := range scored {
+			blanks = append(blanks, indices[i])
+		}
+		sort.Ints(blanks)
+		return kind, blanks
+	}
 	n := len(cards)
 	all := make([]int, n)
 	for i := range all {
@@ -120,9 +148,16 @@ func evaluate(cards []Card) (HandType, []int) {
 		return groups[a].rank > groups[b].rank
 	})
 
+	flushSuit := -1
 	flush := n == 5
 	for _, c := range cards {
-		if c.Suit != cards[0].Suit {
+		if c.Enhancement == 4 {
+			continue
+		}
+		if flushSuit < 0 {
+			flushSuit = c.Suit
+		}
+		if c.Suit != flushSuit {
 			flush = false
 		}
 	}

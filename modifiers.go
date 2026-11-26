@@ -3,17 +3,19 @@ package main
 import "fmt"
 
 type ScoreCtx struct {
-	Training  int
-	Type      HandType
-	Scoring   []Card
-	Played    int
-	PlaysLeft int
-	Money     int
+	HeldPatient int
+	Training    int
+	Type        HandType
+	Scoring     []Card
+	Played      int
+	PlaysLeft   int
+	Money       int
 }
 
 // Modifier changes scoring. card runs once per scoring card, hand runs once
 // after all cards, after runs when the play is finished.
 type Modifier struct {
+	Edition int
 	Name    string
 	Desc    string
 	Price   int

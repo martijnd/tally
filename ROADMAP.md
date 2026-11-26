@@ -33,7 +33,7 @@ Status: `[x]` done, `[ ]` to do.
 - [x] Effect types: debuff a suit, debuff face cards, hand size -1, only one hand type allowed, cards drawn face down, discard random cards after each play, first hand scores nothing, money drains per play, modifiers disabled
 - [x] Final-stage bosses: harsher effects, used only on stage 8
 - [x] Boss effect shown in the header and on affected cards
-- [ ] Some modifiers or consumables can disable the boss effect
+- [x] Some modifiers or consumables can disable the boss effect
 
 ## 3. Hand levels
 
@@ -56,19 +56,19 @@ Status: `[x]` done, `[ ]` to do.
 
 ## 5. Playing card upgrades
 
-- [ ] **Enhancements** (one per card), e.g. extra chips, extra mult, ×mult when held, wild suit, no rank or suit but big chips, chance to break, money when scored
-- [ ] **Editions** for cards and modifiers: +chips, +mult, ×mult, and one that adds a slot
-- [ ] **Seals**: retrigger, money when played, create a consumable when held or discarded
-- [ ] Card detail view showing enhancement, edition and seal
-- [ ] Deck can grow and shrink; cards can be copied, destroyed, or changed in rank and suit
+- [x] **Enhancements** (one per card), e.g. extra chips, extra mult, ×mult when held, wild suit, no rank or suit but big chips, chance to break, money when scored
+- [x] **Editions** for cards and modifiers: +chips, +mult, ×mult, and one that adds a slot
+- [x] **Seals**: retrigger, money when played, create a consumable when held or discarded
+- [x] Card detail view showing enhancement, edition and seal
+- [x] Deck can grow and shrink; cards can be copied, destroyed, or changed in rank and suit
 
 ## 6. Consumables
 
-- [ ] Consumable slots (2 by default), usable during rounds and in the shop
-- [ ] **Level-up items**: one per hand type, level that hand
-- [ ] **Card-edit items** (~22): enhance, change suit, change rank, copy, destroy, make money, create other consumables
-- [ ] **Rare high-risk items** (~18): powerful effects with a cost, e.g. add an edition but destroy something, raise hand size but lose money
-- [ ] Targeting flow: select cards in hand, then use the consumable
+- [x] Consumable slots (2 by default), usable during rounds and in the shop
+- [x] **Level-up items**: one per hand type, level that hand
+- [x] **Card-edit items** (~22): enhance, change suit, change rank, copy, destroy, make money, create other consumables
+- [x] **Rare high-risk items** (~18): powerful effects with a cost, e.g. add an edition but destroy something, raise hand size but lose money
+- [x] Targeting flow: select cards in hand, then use the consumable
 
 ## 7. Shop
 
@@ -111,7 +111,7 @@ Status: `[x]` done, `[ ]` to do.
 
 ## 13. UI and feel
 
-- [ ] Deck viewer: remaining and full deck, grouped by suit, with modifications
+- [x] Deck viewer: remaining and full deck, grouped by suit, with modifications
 - [ ] Run info screen: hand levels, boss list, upgrades owned
 - [ ] Modifier and consumable detail on hover or cursor
 - [ ] Mouse support

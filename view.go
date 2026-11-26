@@ -73,6 +73,9 @@ func padLines(s string, n int) string {
 }
 
 func suit(c Card) string {
+	if c.Enhancement == 7 {
+		return "·"
+	}
 	return lipgloss.NewStyle().Foreground(suitColors[c.Suit]).Render(suitGlyphs[c.Suit])
 }
 
@@ -94,6 +97,12 @@ func (m *model) currentEvent() (Event, bool) {
 }
 
 func (m *model) View() string {
+	if m.viewingDeck {
+		return m.deckView()
+	}
+	if m.inventory {
+		return m.inventoryView()
+	}
 	if m.overview {
 		var b strings.Builder
 		fmt.Fprintf(&b, "Seed %q\n", m.seed)
@@ -140,7 +149,7 @@ func (m *model) viewTable() string {
 	if m.msg != "" {
 		msg = " " + sWarn.Render(m.msg)
 	}
-	help := sDim.Render(" ↑↓ move · space select · p play · d discard · [ ] shift · s sort · c clear · h hands · q quit")
+	help := sDim.Render(" ↑↓ move · space select · p play · d discard · [ ] shift · s sort · c clear · v deck · i supplies · h hands · q quit")
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, m.viewMods(w), msg, help)
 }
 
@@ -277,7 +286,7 @@ func (m *model) progressBar() string {
 func (m *model) viewMods(w int) string {
 	active, hasActive := m.currentEvent()
 	var badges []string
-	for i := 0; i < maxMods; i++ {
+	for i := 0; i < m.modSlots(); i++ {
 		if i >= len(m.mods) {
 			badges = append(badges, sDim.Render("◇"))
 			continue
@@ -350,7 +359,7 @@ func (m *model) viewShop() string {
 		row(i, mod.Name, fmt.Sprintf("$%d", mod.Price), mod.Desc, ps)
 	}
 
-	b.WriteString("\n" + sDim.Render(fmt.Sprintf("OWNED %d/%d", len(m.mods), maxMods)) + "\n")
+	b.WriteString("\n" + sDim.Render(fmt.Sprintf("OWNED %d/%d", len(m.mods), m.modSlots())) + "\n")
 	if len(m.mods) == 0 {
 		b.WriteString(sDim.Render("  nothing yet") + "\n")
 	}
@@ -365,7 +374,7 @@ func (m *model) viewShop() string {
 	if m.msg != "" {
 		b.WriteString("\n" + sWarn.Render(m.msg) + "\n")
 	}
-	b.WriteString("\n" + sDim.Render(fmt.Sprintf("↑↓ move · enter buy/sell · r reroll ($%d) · c next round · h hands · q quit", m.rerollPrice)))
+	b.WriteString("\n" + sDim.Render(fmt.Sprintf("↑↓ move · enter buy/sell · r reroll ($%d) · c next round · v deck · i supplies · h hands · q quit", m.rerollPrice)))
 	return panel.Padding(1, 2).Render(b.String())
 }
 
@@ -382,6 +391,6 @@ func (m *model) viewEnd() string {
 	if m.phase == phaseWon {
 		b.WriteString("e continue endless\n")
 	}
-	b.WriteString("\n" + sDim.Render("n replay seed · h hands · q quit"))
+	b.WriteString("\n" + sDim.Render("n replay seed · v deck · i supplies · h hands · q quit"))
 	return panel.Padding(1, 3).Render(b.String())
 }

@@ -55,13 +55,6 @@ func supplies() []supply {
 	}
 	return out
 }
-func (m *model) supplyPool() []supply {
-	if m.legacyEffects {
-		return oldSupplies()
-	}
-	return supplies()
-}
-
 func (m *model) addHeld(c Card) {
 	m.nextID++
 	c.ID = m.nextID

@@ -7,13 +7,6 @@ type boss struct {
 	Amount             int
 }
 
-var legacyRegularBosses = []boss{
-	{"Ash Orchard", "First suit loses card scoring", "suit", 0}, {"Glass Canal", "Second suit loses card scoring", "suit", 1}, {"Slate Choir", "Third suit loses card scoring", "suit", 2}, {"Copper Marsh", "Fourth suit loses card scoring", "suit", 3},
-	{"Empty Gallery", "Court cards lose card scoring", "faces", 0}, {"Folded Room", "Draw one fewer card", "size", 1}, {"Single Thread", "Repeat the first hand type played", "lock", 0}, {"Fog Ledger", "Cards are drawn face down", "blind", 0}, {"Loose Binding", "Lose one random held card per play", "shed", 1}, {"Late Train", "First play earns zero", "late", 0}, {"Toll House", "Pay $1 per play", "toll", 1}, {"Closed Circuit", "Joker scoring disabled", "mute", 0},
-	{"Even Tide", "Even ranks lose card scoring", "parity", 0}, {"Odd Tide", "Odd ranks lose card scoring", "parity", 1}, {"Low Ceiling", "Ranks 2 through 5 lose card scoring", "low", 0}, {"Broken Crown", "Aces lose card scoring", "ace", 0}, {"Short Shift", "One fewer hand", "plays", 1}, {"Dry Well", "Two fewer discards", "discards", 2}, {"Narrow Gate", "Score with at most three played cards", "limit", 3}, {"Full Bench", "Score only five-card plays", "minimum", 5}, {"Silent Partner", "Pairs score zero", "ban", int(Pair)}, {"Bare Branch", "High cards score zero", "ban", int(HighCard)},
-}
-var legacyFinalBosses = []boss{{"Iron Folio", "All Joker scoring disabled and one fewer hand", "finalmute", 0}, {"Night Ferry", "Pay $4 per play", "toll", 4}, {"Last Archive", "Draw two fewer cards", "size", 2}}
-
 var regularBosses = []boss{
 	{"The Hook", "Discard two random held cards after playing", "shed", 2}, {"The Club", "Clubs are debuffed", "suit", 3}, {"The Psychic", "Play exactly five cards", "minimum", 5}, {"The Goad", "Spades are debuffed", "suit", 0}, {"The Window", "Diamonds are debuffed", "suit", 2}, {"The Manacle", "Hand size reduced by one", "size", 1}, {"The Pillar", "Cards played earlier this Ante are debuffed", "pillar", 0}, {"The Head", "Hearts are debuffed", "suit", 1},
 	{"The House", "First draw is face down", "house", 0}, {"The Wall", "Four times the base target", "target", 4}, {"The Wheel", "One in seven drawn cards is face down", "wheel", 0}, {"The Arm", "Played hands lose a level", "arm", 0}, {"The Fish", "Draw face down after playing", "fish", 0}, {"The Water", "Start with zero discards", "water", 0}, {"The Mouth", "Repeat the first poker hand type", "lock", 0}, {"The Needle", "Only one hand", "needle", 0}, {"The Flint", "Halve base Chips and Mult", "flint", 0}, {"The Mark", "Face cards are drawn face down", "mark", 0},
@@ -61,7 +54,7 @@ func (m *model) cardDebuffed(c Card) bool {
 	b := m.boss()
 	return b.Rule == "leaf" || (b.Rule == "pillar" && m.playedAnte[c.ID]) || b.debuffs(c)
 }
-func (m *model) faceDown(c Card) bool { return m.boss().Rule == "blind" || m.hidden[c.ID] }
+func (m *model) faceDown(c Card) bool { return m.hidden[c.ID] }
 func (m *model) forceCard() {
 	if m.boss().Rule == "bell" && len(m.hand) > 0 {
 		for i, c := range m.hand {
@@ -82,16 +75,10 @@ func (m *model) boss() boss {
 	return m.stageBoss(m.round / 3)
 }
 func (m *model) stageBoss(stage int) boss {
-	if !m.legacyEffects {
-		for len(m.bosses) <= stage {
-			m.bosses = append(m.bosses, m.nextBoss(len(m.bosses)))
-		}
+	for len(m.bosses) <= stage {
+		m.bosses = append(m.bosses, m.nextBoss(len(m.bosses)))
 	}
-	if stage < len(m.bosses) {
-		return m.bosses[stage]
-	}
-	amount := 5 + stage - len(m.bosses)
-	return boss{fmt.Sprintf("Deep customs %d", amount), fmt.Sprintf("Pay $%d per play", amount), "toll", amount}
+	return m.bosses[stage]
 }
 func (b boss) debuffs(c Card) bool {
 	if c.Enhancement == 7 {
@@ -102,12 +89,6 @@ func (b boss) debuffs(c Card) bool {
 		return c.Suit == b.Amount || c.Enhancement == 4
 	case "faces":
 		return c.Rank >= 11
-	case "parity":
-		return c.Rank%2 == b.Amount
-	case "low":
-		return c.Rank >= 2 && c.Rank <= 5
-	case "ace":
-		return c.Rank == 1
 	}
 	return false
 }

@@ -63,7 +63,7 @@ func (m *model) applyTags(when string) {
 				keep = append(keep, id)
 				continue
 			}
-			m.bag = append(m.bag, m.lesson())
+			m.bag = append(m.bag, m.randomSupply("Planet", ""))
 		case "free":
 			switch when {
 			case "reroll":

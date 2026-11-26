@@ -3,9 +3,9 @@ package main
 import "fmt"
 
 type ScoreCtx struct {
-	Flint       bool
-	Plasma      bool
-	Legacy      bool
+	Flint  bool
+	Plasma bool
+
 	Lucky       func() float64
 	Previous    int
 	OnScore     func(Card)

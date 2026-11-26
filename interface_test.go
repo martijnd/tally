@@ -76,15 +76,6 @@ func TestContentEntryPoints(t *testing.T) {
 		m.play()
 		m.finishPlay()
 	}
-	for _, b := range bargains {
-		m := newModel("trade")
-		m.startRound()
-		m.selected[0] = true
-		m.startModifier("Ember")
-		if !m.strikeBargain(b) {
-			t.Fatal(b.Name)
-		}
-	}
 	for _, it := range supplies() {
 
 		m := newModel("supply")

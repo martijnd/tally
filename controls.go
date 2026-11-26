@@ -22,7 +22,7 @@ func (m *model) advanceScoring() tea.Cmd {
 
 func (m *model) Init() tea.Cmd { return nil }
 
-// Record the resolved key so new shortcuts cannot reinterpret an older run.
+// Normalize keyboard shortcuts before recording and dispatch.
 func (m *model) resolveKey(msg tea.Msg) tea.Msg {
 	k, ok := msg.(tea.KeyMsg)
 	if !ok {
@@ -30,8 +30,6 @@ func (m *model) resolveKey(msg tea.Msg) tea.Msg {
 	}
 	runeKey := func(r rune) tea.KeyMsg { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}} }
 	switch k.String() {
-	case "p":
-		return nil // Old recordings may contain p, but live input ignores it.
 	case "w":
 		return tea.KeyMsg{Type: tea.KeyUp}
 	case "s":

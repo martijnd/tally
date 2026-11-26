@@ -135,8 +135,8 @@ func (m *model) openPack() {
 		}
 	default:
 		var items []supply
-		for _, it := range m.supplyPool() {
-			if m.supplyFamily(it) == [...]string{"Planet", "Tarot", "Spectral"}[m.packKind-2] {
+		for _, it := range supplies() {
+			if it.cardFamily() == [...]string{"Planet", "Tarot", "Spectral"}[m.packKind-2] {
 				items = append(items, it)
 			}
 		}

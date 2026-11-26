@@ -17,19 +17,16 @@ type profile struct {
 	Seen        map[string]bool
 }
 type input struct {
-	Mouse *tea.MouseMsg `json:",omitempty"`
-	Key   *tea.KeyMsg   `json:",omitempty"`
-	Ticks int           `json:",omitempty"`
+	Key   *tea.KeyMsg `json:",omitempty"`
+	Ticks int         `json:",omitempty"`
 }
 type recording struct {
-	Discoveries   int
-	LegacyEffects bool
-	LegacyPacks   bool
-	Prefs         preferences
-	UnlockRound   int
-	Seed          string
-	Opening       [15]int
-	Inputs        []input
+	Discoveries int
+	Prefs       preferences
+	UnlockRound int
+	Seed        string
+	Opening     [15]int
+	Inputs      []input
 }
 type saveFile struct {
 	Version int
@@ -44,67 +41,35 @@ type session struct {
 }
 
 func loadSession(path, seed string, fresh bool) (*session, error) {
-	s := &session{path: path, data: saveFile{Version: 4}}
+	const saveVersion = 5
+	s := &session{path: path}
 	raw, err := os.ReadFile(path)
 	if err == nil {
 		if err = json.Unmarshal(raw, &s.data); err != nil {
 			return nil, err
 		}
-		if s.data.Version != 1 && s.data.Version != 2 && s.data.Version != 3 && s.data.Version != 4 {
-			return nil, fmt.Errorf("unsupported save version %d", s.data.Version)
+		if s.data.Version != saveVersion {
+			return nil, fmt.Errorf("unsupported save version %d in %s; move the file aside to start a new profile", s.data.Version, path)
 		}
 	} else if !os.IsNotExist(err) {
 		return nil, err
 	}
+	s.data.Version = saveVersion
 	if s.data.Profile.Seen == nil {
 		s.data.Profile.Seen = map[string]bool{}
 	}
 	r := s.data.Run
-	if r != nil && s.data.Version < 4 {
-		r.LegacyEffects = true
-	}
-	if s.data.Version < 3 {
-		if r != nil {
-			r.LegacyPacks = true
-		}
-		for old, name := range consumableNames {
-			if s.data.Profile.Seen[old] {
-				s.data.Profile.Seen[name] = true
-				delete(s.data.Profile.Seen, old)
-			}
-		}
-	}
 	if fresh || r == nil {
 		r = &recording{Prefs: s.data.Profile.Prefs, Discoveries: len(s.data.Profile.Seen), Seed: seed, UnlockRound: s.data.Profile.Round, Opening: s.data.Profile.Highest}
 		s.data.Run = r
 	}
 	s.game = newModel(r.Seed)
-	s.game.legacyEffects = r.LegacyEffects
-	if r.LegacyEffects {
-		s.game.restoreLegacyBosses()
-	}
-	s.game.legacyPacks = r.LegacyPacks
 	s.game.prefs = r.Prefs
 	s.game.bestDifficulty = r.Opening
 	s.game.discoveries = r.Discoveries
 	s.game.unlockRound = r.UnlockRound
 	for _, in := range r.Inputs {
-		if in.Mouse != nil {
-			s.game.replayMouse(*in.Mouse)
-		} else if in.Key != nil {
-			if s.data.Version == 1 {
-				switch in.Key.String() {
-				case "a":
-					in.Key.Runes = []rune{'l'}
-				case "A":
-					in.Key.Runes = []rune{'a'}
-				case "l":
-					in.Key.Runes = nil // Previously unbound.
-				}
-			}
-			if in.Key.String() == "p" {
-				in.Key.Runes = []rune{'a'}
-			}
+		if in.Key != nil {
 			s.game.updateResolved(*in.Key)
 		} else {
 			for range in.Ticks {
@@ -112,7 +77,6 @@ func loadSession(path, seed string, fresh bool) (*session, error) {
 			}
 		}
 	}
-	s.data.Version = 4
 	s.game.profile = &s.data.Profile
 	return s, nil
 }
@@ -180,7 +144,7 @@ func (s *session) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if r != nil {
 			n := len(r.Inputs)
-			if n == 0 || r.Inputs[n-1].Key != nil || r.Inputs[n-1].Mouse != nil {
+			if n == 0 || r.Inputs[n-1].Key != nil {
 				r.Inputs = append(r.Inputs, input{})
 			}
 			r.Inputs[len(r.Inputs)-1].Ticks++
@@ -200,7 +164,7 @@ func (s *session) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	p.Best = max(p.Best, m.bestGain)
 	if m.phase != phaseStart {
 		p.Round = max(p.Round, m.round+1)
-		p.Seen[m.decks()[m.deckID].Name] = true
+		p.Seen[startingDecks[m.deckID].Name] = true
 		if m.challengeID > 0 {
 			p.Seen[challenges[m.challengeID-1].Name] = true
 		}

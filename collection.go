@@ -5,12 +5,6 @@ import (
 	"strings"
 )
 
-func (m *model) deckUnlock(i int) int {
-	if i < 12 {
-		return 0
-	}
-	return (i - 11) * 3
-}
 func (m *model) modifierUnlocked(name string) bool {
 	return name != "Last Call" || m.unlockRound >= 3 || m.round >= 2
 }
@@ -119,9 +113,7 @@ func (m *model) collectionView() string {
 var discoveryGoals = [...]int{0, 20, 50, 75, 100}
 
 func (m *model) deckAvailable(i int) bool {
-	if m.legacyEffects {
-		return m.unlockRound >= m.deckUnlock(i)
-	}
+
 	if i < 5 {
 		return m.discoveries >= discoveryGoals[i]
 	}
@@ -136,9 +128,7 @@ func (m *model) deckAvailable(i int) bool {
 	return false
 }
 func (m *model) unlockHint(i int) string {
-	if m.legacyEffects {
-		return fmt.Sprintf("Unlock at round %d", m.deckUnlock(i))
-	}
+
 	if i < 5 {
 		return fmt.Sprintf("Discover %d items", discoveryGoals[i])
 	}

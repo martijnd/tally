@@ -20,8 +20,6 @@ const (
 	countSteps       = 14
 )
 
-var targets = [8]int{300, 500, 800, 1200, 1800, 2700, 4000, 6000}
-
 type phase int
 
 const (
@@ -52,17 +50,17 @@ type reward struct {
 }
 
 type model struct {
-	hidden, playedAnte                           map[int]bool
-	roundTypes                                   [len(handBases)]bool
-	forcedID, disabledJoker, trackedAnte         int
-	oxHand                                       HandType
-	firstDraw, afterHand                         bool
-	discoveries                                  int
-	legacyEffects                                bool
-	lastSupply                                   supply
-	ectoUses                                     int
-	lastHand                                     HandType
-	legacyPacks                                  bool
+	hidden, playedAnte                   map[int]bool
+	roundTypes                           [len(handBases)]bool
+	forcedID, disabledJoker, trackedAnte int
+	oxHand                               HandType
+	firstDraw, afterHand                 bool
+	discoveries                          int
+
+	lastSupply supply
+	ectoUses   int
+	lastHand   HandType
+
 	prefs                                        preferences
 	settings                                     bool
 	collection                                   bool
@@ -136,53 +134,38 @@ func newModel(seed string) *model {
 
 func (m *model) target() int {
 	stage := m.round / 3
-	if !m.legacyEffects {
-		curves := [3][8]int{{300, 800, 2000, 5000, 11000, 20000, 35000, 50000}, {300, 900, 2600, 8000, 20000, 36000, 60000, 100000}, {300, 1000, 3200, 9000, 25000, 60000, 110000, 200000}}
-		curve := 0
-		if m.difficulty >= 5 {
-			curve = 2
-		} else if m.difficulty >= 2 {
-			curve = 1
-		}
-		base := float64(curves[curve][min(stage, 7)])
-		if stage >= 8 {
-			c := float64(stage - 7)
-			base *= math.Pow(1.6+math.Pow(0.75*c, 1+0.2*c), c)
-			if math.IsInf(base, 1) {
-				return math.MaxInt
-			}
-			unit := math.Pow(10, math.Floor(math.Log10(base))-1)
-			base = math.Floor(base/unit) * unit
-		}
-		if m.deckIs(13) || m.restriction("high targets") {
-			base *= 2
-		}
-		factor := 1 + float64(m.round%3)/2
-		if b := m.boss(); b.Rule == "target" {
-			factor = float64(b.Amount)
-		} else if b.Rule == "needle" {
-			factor = 1
-		}
-		target := base * factor
-		if target >= float64(math.MaxInt) {
+
+	curves := [3][8]int{{300, 800, 2000, 5000, 11000, 20000, 35000, 50000}, {300, 900, 2600, 8000, 20000, 36000, 60000, 100000}, {300, 1000, 3200, 9000, 25000, 60000, 110000, 200000}}
+	curve := 0
+	if m.difficulty >= 5 {
+		curve = 2
+	} else if m.difficulty >= 2 {
+		curve = 1
+	}
+	base := float64(curves[curve][min(stage, 7)])
+	if stage >= 8 {
+		c := float64(stage - 7)
+		base *= math.Pow(1.6+math.Pow(0.75*c, 1+0.2*c), c)
+		if math.IsInf(base, 1) {
 			return math.MaxInt
 		}
-		return int(target)
+		unit := math.Pow(10, math.Floor(math.Log10(base))-1)
+		base = math.Floor(base/unit) * unit
 	}
-	base := targets[min(stage, 7)]
-	if m.difficulty >= 2 {
-		base += base * (1 + min(stage, 8)) / 8
-	}
-	if m.difficulty >= 7 || m.restriction("high targets") {
+	if m.deckIs(13) || m.restriction("high targets") {
 		base *= 2
 	}
-	for i := 7; i < stage; i++ {
-		if base > int(^uint(0)>>1)/16 {
-			return int(^uint(0) >> 1)
-		}
-		base *= 4
+	factor := 1 + float64(m.round%3)/2
+	if b := m.boss(); b.Rule == "target" {
+		factor = float64(b.Amount)
+	} else if b.Rule == "needle" {
+		factor = 1
 	}
-	return base * (2 + m.round%3) / 2
+	target := base * factor
+	if target >= float64(math.MaxInt) {
+		return math.MaxInt
+	}
+	return int(target)
 }
 
 func (m *model) startRound() {
@@ -223,10 +206,6 @@ func (m *model) startRound() {
 		}
 	case "acorn":
 		m.deckRNG.Shuffle(len(m.mods), func(i, j int) { m.mods[i], m.mods[j] = m.mods[j], m.mods[i] })
-	case "plays", "finalmute":
-		m.plays--
-	case "discards":
-		m.discards -= b.Amount
 	}
 	m.discards = max(0, m.discards)
 	if m.restriction("no discards") {
@@ -349,20 +328,13 @@ func (m *model) play() bool {
 		}
 	}
 	local = valid
-	firstPlay := m.firstType < 0
-	if firstPlay {
+	if m.firstType < 0 {
 		m.firstType = ht
 	}
 	mods := m.mods
 	if b.Rule == "heart" && m.disabledJoker >= 0 && m.disabledJoker < len(mods) {
 		mods = slices.Clone(mods)
 		mods[m.disabledJoker] = &Modifier{}
-	}
-	if b.Rule == "mute" || b.Rule == "finalmute" {
-		mods = nil
-	}
-	if b.Rule == "toll" {
-		m.money = max(0, m.money-b.Amount)
 	}
 	scoringIdx := make([]int, len(local))
 	scoringCards := make([]Card, len(local))
@@ -379,26 +351,19 @@ func (m *model) play() bool {
 			m.emit("held")
 			if c.Enhancement == 3 {
 				held++
-				if !m.legacyEffects && c.Seal == 1 {
+				if c.Seal == 1 {
 					held++
 				}
 			}
-			if m.legacyEffects && c.Seal == 3 && len(m.bag) < m.bagSlots() {
-				m.bag = append(m.bag, m.lesson())
-			}
+
 		}
 	}
 	onScore := func(c Card) {
 		m.emit("score")
 		if c.Seal == 2 {
-			m.money += 2
-			if !m.legacyEffects {
-				m.money++
-			}
+			m.money += 3
 		}
-		if m.legacyEffects && c.Enhancement == 6 {
-			m.money++
-		}
+
 	}
 	m.lastHand = ht
 	previousType := m.roundTypes[ht]
@@ -413,7 +378,7 @@ func (m *model) play() bool {
 		m.money = 0
 	}
 	m.timesPlayed[ht]++
-	ctx := ScoreCtx{Flint: b.Rule == "flint", Plasma: m.deckIs(13), Legacy: m.legacyEffects, Lucky: func() float64 {
+	ctx := ScoreCtx{Flint: b.Rule == "flint", Plasma: m.deckIs(13), Lucky: func() float64 {
 		mult := 0.
 		if m.itemRNG.IntN(5) < m.odds() {
 			mult = 20
@@ -424,7 +389,7 @@ func (m *model) play() bool {
 		return mult
 	}, Previous: m.timesPlayed[ht] - 1, OnScore: onScore, HeldPatient: held, Training: m.levels[ht], Type: ht, Scoring: scoringCards, Played: len(played), PlaysLeft: m.plays, Money: m.money}
 	m.events, m.gain = scoreHand(m.hand, scoringIdx, ht, mods, ctx)
-	if (b.Rule == "eye" && previousType) || (b.Rule == "lock" && ht != m.firstType) || (b.Rule == "late" && firstPlay) || (b.Rule == "limit" && len(sel) > b.Amount) || (b.Rule == "minimum" && len(sel) < b.Amount) || (b.Rule == "ban" && int(ht) == b.Amount) {
+	if (b.Rule == "eye" && previousType) || (b.Rule == "lock" && ht != m.firstType) || (b.Rule == "minimum" && len(sel) < b.Amount) {
 		m.gain = 0
 		m.events = append(m.events, Event{Label: b.Name, Card: -1, Mod: -1})
 	}
@@ -438,11 +403,7 @@ func (m *model) play() bool {
 
 func scoreHand(hand []Card, scoring []int, ht HandType, mods []*Modifier, ctx ScoreCtx) ([]Event, int) {
 	b := trainedBase(ht, ctx.Training)
-	if ctx.Legacy {
-		b = handBases[ht]
-		b.Chips += ctx.Training * (5 + int(ht)*2)
-		b.Mult += ctx.Training * (1 + int(ht)/4)
-	}
+
 	chips, mult := b.Chips, float64(b.Mult)
 	if ctx.Flint {
 		chips = (chips + 1) / 2
@@ -466,18 +427,12 @@ func scoreHand(hand []Card, scoring []int, ht HandType, mods []*Modifier, ctx Sc
 				ctx.OnScore(c)
 			}
 			chips += c.Chips()
-			chips, mult = editionScore(c.Edition, chips, mult, ctx.Legacy)
+			chips, mult = editionScore(c.Edition, chips, mult)
 			switch c.Enhancement {
 			case 1:
 				chips += 30
-				if ctx.Legacy {
-					chips -= 5
-				}
 			case 2:
 				mult += 4
-				if ctx.Legacy {
-					mult--
-				}
 			case 8:
 				if ctx.Lucky != nil {
 					mult += ctx.Lucky()
@@ -504,15 +459,13 @@ func scoreHand(hand []Card, scoring []int, ht HandType, mods []*Modifier, ctx Sc
 	}
 	for range ctx.HeldPatient {
 		factor := 1.5
-		if ctx.Legacy {
-			factor = 2
-		}
+
 		mult *= factor
 		ev = append(ev, Event{Label: fmt.Sprintf("Steel ×%g", factor), Chips: chips, Mult: mult, Card: -1, Mod: -1})
 	}
 	for mi, mod := range mods {
 		if mod.Edition > 0 && mod.Edition < 4 {
-			chips, mult = editionScore(mod.Edition, chips, mult, ctx.Legacy)
+			chips, mult = editionScore(mod.Edition, chips, mult)
 			ev = append(ev, Event{Label: editions[mod.Edition] + " " + mod.Name, Chips: chips, Mult: mult, Card: -1, Mod: mi})
 		}
 		source := scoringSource(mods, mi)
@@ -564,7 +517,7 @@ func (m *model) finishPlay() {
 		}
 	}
 	m.scoring = nil
-	if !m.legacyEffects && m.score >= m.target() {
+	if m.score >= m.target() {
 		for i, c := range m.hand {
 			if m.selected[i] || m.cardDebuffed(c) {
 				continue
@@ -622,11 +575,7 @@ func (m *model) discard() {
 	}
 	for _, i := range sel {
 		if m.hand[i].Seal == 4 && len(m.bag) < m.bagSlots() {
-			if m.legacyEffects {
-				m.bag = append(m.bag, m.lesson())
-			} else {
-				m.bag = append(m.bag, m.randomSupply("Tarot", ""))
-			}
+			m.bag = append(m.bag, m.randomSupply("Tarot", ""))
 		}
 	}
 	m.emit("discard")
@@ -652,9 +601,7 @@ func (m *model) winRound() {
 		m.rewards = append(m.rewards, reward{fmt.Sprintf("%d unused hands", m.plays), m.plays * handPay})
 	}
 	divisor := 5
-	if m.legacyEffects && m.difficulty >= 6 {
-		divisor = 10
-	}
+
 	if interest := min(m.money/divisor, 5+5*m.upgrades[savings]); interest > 0 && !m.deckIs(3) && !m.restriction("no interest") {
 		m.rewards = append(m.rewards, reward{fmt.Sprintf("interest ($1 per $%d)", divisor), interest})
 	}
@@ -668,10 +615,10 @@ func (m *model) winRound() {
 }
 
 func (m *model) openShop() {
-	items := m.supplyPool()
+	items := supplies()
 	for {
 		it := items[m.shopRNG.IntN(len(items))]
-		if m.supplyFamily(it) != "Spectral" || ((m.legacyEffects || m.deckIs(7)) && m.shopRNG.IntN(6) == 0 && (m.legacyEffects || (it.Name != "Black Hole" && it.Name != "The Soul"))) {
+		if it.cardFamily() != "Spectral" || (m.deckIs(7) && m.shopRNG.IntN(6) == 0 && it.Name != "Black Hole" && it.Name != "The Soul") {
 			m.stockItem = &it
 			break
 		}
@@ -791,13 +738,4 @@ func multiplyScore(a, b int) int {
 		return limit
 	}
 	return a * b
-}
-
-func (m *model) restoreLegacyBosses() {
-	m.bosses = nil
-	rng := runStream(m.seed, "boss")
-	for _, i := range rng.Perm(len(legacyRegularBosses)) {
-		m.bosses = append(m.bosses, legacyRegularBosses[i])
-	}
-	m.bosses = append(m.bosses[:7:7], append([]boss{legacyFinalBosses[rng.IntN(len(legacyFinalBosses))]}, m.bosses[7:]...)...)
 }

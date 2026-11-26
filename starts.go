@@ -8,23 +8,13 @@ import (
 
 type startingDeck struct{ Name, Rule string }
 
-var legacyDecks = []startingDeck{
-	{"Ledger", "Standard 52-card deck"}, {"Draft", "One extra discard"}, {"Treasury", "Start with $10 extra"}, {"Courier", "One extra consumable slot"}, {"Republic", "No court cards"}, {"Duplex", "Two suits, one per colour"}, {"Collage", "Every card starts enhanced"}, {"Gallery", "One extra Joker slot"}, {"Panorama", "One extra card in hand"}, {"Encore", "One extra hand"}, {"Primer", "Pairs start at level three"}, {"Proof", "Begin with a copying tool"}, {"Mint", "Aces have Mint seals"}, {"Workshop", "Start with Ember"}, {"Thrift", "Rerolls start $1 cheaper"},
-}
-
 var startingDecks = []startingDeck{
 	{"Red Deck", "+1 discard each round"}, {"Blue Deck", "+1 hand each round"}, {"Yellow Deck", "Begin with $10 extra"}, {"Green Deck", "Cash out unused hands for $2 and discards for $1. Earn no interest."}, {"Black Deck", "One extra Joker slot and one fewer hand"},
 	{"Magic Deck", "Crystal Ball and two copies of The Fool"}, {"Nebula Deck", "Telescope and one fewer consumable slot"}, {"Ghost Deck", "Start with Hex. Spectral cards can appear in the shop."}, {"Abandoned Deck", "No face cards"}, {"Checkered Deck", "26 Hearts and 26 Spades"},
 	{"Zodiac Deck", "Tarot Merchant, Planet Merchant and Overstock"}, {"Painted Deck", "Two extra cards in hand and one fewer Joker slot"}, {"Anaglyph Deck", "Earn a Double Tag after each Boss Blind"}, {"Plasma Deck", "Balance Chips and Mult before scoring. Double Blind sizes."}, {"Erratic Deck", "Begin with 52 randomly ranked and suited cards"},
 }
 
-func (m *model) decks() []startingDeck {
-	if m.legacyEffects {
-		return legacyDecks
-	}
-	return startingDecks
-}
-func (m *model) deckIs(id int) bool { return !m.legacyEffects && m.deckID == id }
+func (m *model) deckIs(id int) bool { return m.deckID == id }
 func (m *model) chooseDeck() {
 	switch m.deckID {
 	case 0:
@@ -91,57 +81,8 @@ func (m *model) startModifier(name string) {
 		}
 	}
 }
-func (m *model) legacyStart() {
-	switch m.deckID {
-	case 1:
-		m.discardBonus++
-	case 2:
-		m.money += 10
-	case 3:
-		m.bagBonus++
-	case 4:
-		m.stock = slices.DeleteFunc(m.stock, func(c Card) bool { return c.Rank >= 11 })
-	case 5:
-		for i := range m.stock {
-			if m.stock[i].Suit == 2 {
-				m.stock[i].Suit = 1
-			}
-			if m.stock[i].Suit == 3 {
-				m.stock[i].Suit = 0
-			}
-		}
-	case 6:
-		for i := range m.stock {
-			m.stock[i].Enhancement = 1 + m.deckRNG.IntN(len(enhancements)-1)
-		}
-	case 7:
-		m.slotBonus++
-	case 8:
-		m.handBonus++
-	case 9:
-		m.playBonus++
-	case 10:
-		m.levels[Pair] = 2
-	case 11:
-		m.bag = append(m.bag, m.supplyPool()[0])
-	case 12:
-		for i := range m.stock {
-			if m.stock[i].Rank == 1 {
-				m.stock[i].Seal = 2
-			}
-		}
-	case 13:
-		m.startModifier("Ember")
-	case 14:
-		m.upgrades[coupons] = 1
-	}
-}
 func (m *model) chooseStart() {
-	if m.legacyEffects {
-		m.legacyStart()
-	} else {
-		m.chooseDeck()
-	}
+	m.chooseDeck()
 	if m.challengeID > 0 {
 		m.startModifier(challenges[m.challengeID-1].Mod)
 	}
@@ -169,7 +110,7 @@ func (m *model) startKey(key string) {
 func (m *model) startView() string {
 	var b strings.Builder
 	b.WriteString("Choose your deck\n")
-	for i, d := range m.decks() {
+	for i, d := range startingDecks {
 		mark := " "
 		if i == m.deckID {
 			mark = ">"
@@ -194,7 +135,7 @@ func (m *model) roundReward() int {
 	if m.difficulty >= 1 && m.round%3 == 0 {
 		return 0
 	}
-	if !m.legacyEffects && m.round%24 == 23 {
+	if m.round%24 == 23 {
 		return 8
 	}
 	return 3 + m.round%3 + 2*m.upgrades[dividends]

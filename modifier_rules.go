@@ -109,9 +109,6 @@ func (m *model) odds() int {
 	return n
 }
 func (m *model) emit(event string) {
-	if m.phase == phasePlay && (m.boss().Rule == "mute" || m.boss().Rule == "finalmute") {
-		return
-	}
 	for _, mod := range m.mods {
 		if mod.Trigger != event {
 			continue
@@ -129,7 +126,7 @@ func (m *model) emit(event string) {
 			}
 		case "lesson", "scholarship":
 			if len(m.bag) < m.bagSlots() && (mod.Effect == "lesson" || m.itemRNG.IntN(4) < m.odds()) {
-				m.bag = append(m.bag, m.lesson())
+				m.bag = append(m.bag, m.randomSupply("Planet", ""))
 			}
 		case "add":
 			m.nextID++

@@ -112,7 +112,7 @@ func (m *model) viewTable() string {
 	w := lipgloss.Width(body)
 
 	header := spread(
-		sAccent.Render(" tally")+sDim.Render(fmt.Sprintf("  round %d/%d", m.round+1, numRounds)),
+		sAccent.Render(" tally")+sDim.Render(fmt.Sprintf("  stage %d/8 · %s", m.round/3+1, []string{"opening", "main", "boss"}[m.round%3])),
 		sDim.Render("target ")+sBold.Render(commas(m.target()))+" ",
 		w,
 	)
@@ -337,7 +337,7 @@ func (m *model) viewShop() string {
 	if m.msg != "" {
 		b.WriteString("\n" + sWarn.Render(m.msg) + "\n")
 	}
-	b.WriteString("\n" + sDim.Render(fmt.Sprintf("↑↓ move · enter buy/sell · r reroll ($%d) · c next round · q quit", rerollCost)))
+	b.WriteString("\n" + sDim.Render(fmt.Sprintf("↑↓ move · enter buy/sell · r reroll ($%d) · c next round · q quit", m.rerollPrice)))
 	return panel.Padding(1, 2).Render(b.String())
 }
 

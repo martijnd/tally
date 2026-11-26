@@ -15,13 +15,13 @@ const (
 	playsPerRound    = 4
 	discardsPerRound = 3
 	maxMods          = 5
-	numRounds        = 8
+	numRounds        = 24
 	rerollCost       = 2
 	shopOffers       = 3
 	countSteps       = 14
 )
 
-var targets = [numRounds]int{300, 500, 800, 1200, 1800, 2700, 4000, 6000}
+var targets = [8]int{300, 500, 800, 1200, 1800, 2700, 4000, 6000}
 
 type phase int
 
@@ -79,8 +79,9 @@ type model struct {
 
 	rewards []reward
 
-	offers     []*Modifier
-	shopCursor int
+	offers      []*Modifier
+	shopCursor  int
+	rerollPrice int
 
 	msg string
 }
@@ -94,7 +95,7 @@ func newModel() *model {
 	return m
 }
 
-func (m *model) target() int { return targets[m.round] }
+func (m *model) target() int { return targets[m.round/3] * (2 + m.round%3) / 2 }
 
 func (m *model) startRound() {
 	m.deck = newDeck()
@@ -315,7 +316,7 @@ func (m *model) discard() {
 }
 
 func (m *model) winRound() {
-	m.rewards = []reward{{"round cleared", 4}}
+	m.rewards = []reward{{"round cleared", 3 + m.round%3}}
 	if m.plays > 0 {
 		m.rewards = append(m.rewards, reward{fmt.Sprintf("%d unused plays", m.plays), m.plays})
 	}
@@ -329,6 +330,7 @@ func (m *model) winRound() {
 }
 
 func (m *model) openShop() {
+	m.rerollPrice = rerollCost
 	m.rollOffers()
 	m.shopCursor = 0
 	m.msg = ""
@@ -475,11 +477,12 @@ func (m *model) updateShop(key string) {
 			m.shopSelect()
 		}
 	case "r":
-		if m.money < rerollCost {
+		if m.money < m.rerollPrice {
 			m.msg = "not enough money to reroll"
 			return
 		}
-		m.money -= rerollCost
+		m.money -= m.rerollPrice
+		m.rerollPrice++
 		m.rollOffers()
 		m.clampShopCursor()
 		m.msg = "rerolled"

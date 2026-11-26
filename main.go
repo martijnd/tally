@@ -21,7 +21,12 @@ func main() {
 	seed := flag.String("seed", "", "replay a named seed")
 	daily := flag.Bool("daily", false, "play today's shared UTC seed")
 	fresh := flag.Bool("new", false, "start a fresh run and keep your profile")
+	runs := flag.Int("simulate", 0, "simulate seeded runs and report progression by modifier")
 	flag.Parse()
+	if *runs > 0 {
+		simulate(os.Stdout, *runs, *seed)
+		return
+	}
 	explicit := *seed != "" || *daily || *fresh
 	if *daily && *seed != "" {
 		fmt.Fprintln(os.Stderr, "choose either -seed or -daily")
@@ -43,7 +48,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	p := tea.NewProgram(s, tea.WithAltScreen())
+	p := tea.NewProgram(s, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

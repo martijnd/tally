@@ -120,7 +120,7 @@ func (m *model) startView() string {
 		c := challenges[m.challengeID-1]
 		fmt.Fprintf(&b, "%s · start with %s · %s\n", c.Name, c.Mod, c.Rule)
 	}
-	b.WriteString("↑↓ deck · ←→ difficulty · c challenge · enter start · a collection")
+	b.WriteString("↑↓ deck · ←→ difficulty · c challenge · enter start · a collection · , settings")
 	return panel.Padding(1, 2).Render(b.String())
 }
 func (m *model) roundReward() int {

@@ -83,7 +83,7 @@ func catalog() []Modifier {
 				if !containsPair(ctx.Type) {
 					return "", c, mu
 				}
-				return "×2 mult", c, mu * 2
+				return "×2 mult", c, multiplyScore(mu, 2)
 			},
 		},
 		{
@@ -92,7 +92,7 @@ func catalog() []Modifier {
 				if ctx.PlaysLeft != 0 {
 					return "", c, mu
 				}
-				return "×3 mult", c, mu * 3
+				return "×3 mult", c, multiplyScore(mu, 3)
 			},
 		},
 		{

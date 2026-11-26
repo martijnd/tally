@@ -15,10 +15,17 @@ var regularBosses = []boss{
 var finalBosses = []boss{{"Iron Folio", "All modifier scoring disabled and one fewer play", "finalmute", 0}, {"Night Ferry", "Pay $4 per play", "toll", 4}, {"Last Archive", "Draw two fewer cards", "size", 2}}
 
 func (m *model) boss() boss {
-	if m.round%3 != 2 || m.bossDisabled || m.round/3 >= len(m.bosses) {
+	if m.round%3 != 2 || m.bossDisabled {
 		return boss{}
 	}
-	return m.bosses[m.round/3]
+	return m.stageBoss(m.round / 3)
+}
+func (m *model) stageBoss(stage int) boss {
+	if stage < len(m.bosses) {
+		return m.bosses[stage]
+	}
+	amount := 5 + stage - len(m.bosses)
+	return boss{fmt.Sprintf("Deep customs %d", amount), fmt.Sprintf("Pay $%d per play", amount), "toll", amount}
 }
 func (b boss) debuffs(c Card) bool {
 	if c.Enhancement == 7 {
@@ -43,7 +50,7 @@ func (m *model) preview() string {
 	if m.round%3 == 2 {
 		b := m.boss()
 		description += b.Name + " · " + b.Effect
-	} else {
+	} else if !m.restriction("no skips") {
 		t := tags[m.skipTag()]
 		description += "s skip · " + t.Name + " · " + t.Desc
 	}

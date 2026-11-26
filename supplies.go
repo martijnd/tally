@@ -140,7 +140,7 @@ func (m *model) inventoryKey(key string) {
 	switch key {
 	case "i", "esc":
 		m.inventory = false
-	case "1", "2", "3", "4":
+	case "1", "2", "3", "4", "5":
 		m.useSupply(int(key[0] - '1'))
 	case "up", "down", " ":
 		m.updatePlay(key)

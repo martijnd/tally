@@ -114,17 +114,17 @@ Status: `[x]` done, `[ ]` to do.
 - [x] Deck viewer: remaining and full deck, grouped by suit, with modifications
 - [x] Run info screen: hand levels, boss list, upgrades owned
 - [x] Modifier and consumable detail on hover or cursor
-- [ ] Mouse support
-- [ ] Faster or skippable scoring animation, configurable speed
+- [x] Mouse support
+- [x] Faster or skippable scoring animation, configurable speed
 - [x] Rearrange cards in hand by hand, not only sort
-- [ ] Big-number formatting for endless mode (1.2e15 and up)
-- [ ] Sound bell on big scores (optional), colour themes, light terminal support
-- [ ] Settings screen
+- [x] Big-number formatting for endless mode (1.2e15 and up)
+- [x] Sound bell on big scores (optional), colour themes, light terminal support
+- [x] Settings screen
 
 ## 14. Engineering
 
 - [x] Separate game rules from the TUI so rules can be tested without rendering
 - [x] Event-driven scoring pipeline that handles retriggers, copies and trigger order
 - [x] Data-driven content definitions for modifiers, bosses, consumables and decks
-- [ ] Simulation harness to balance targets and item strength over thousands of runs
-- [ ] Release builds for macOS, Linux and Windows
+- [x] Simulation harness to balance targets and item strength over thousands of runs
+- [x] Release builds for macOS, Linux and Windows

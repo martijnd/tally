@@ -50,6 +50,8 @@ type reward struct {
 }
 
 type model struct {
+	prefs                                        preferences
+	settings                                     bool
 	collection                                   bool
 	collectionGroup, collectionPage, unlockRound int
 	profile                                      *profile
@@ -353,7 +355,7 @@ func scoreHand(hand []Card, scoring []int, ht HandType, mods []*Modifier, ctx Sc
 			case 2:
 				mult += 3
 			case 5:
-				mult *= 2
+				mult = multiplyScore(mult, 2)
 			}
 			ev = append(ev, Event{Label: fmt.Sprintf("+%d chips", c.Chips()), Chips: chips, Mult: mult, Card: hi, C: c, HasCard: true, Mod: -1})
 			for mi, mod := range mods {
@@ -373,7 +375,7 @@ func scoreHand(hand []Card, scoring []int, ht HandType, mods []*Modifier, ctx Sc
 
 	}
 	for range ctx.HeldPatient {
-		mult *= 2
+		mult = multiplyScore(mult, 2)
 		ev = append(ev, Event{Label: "Patient ×2", Chips: chips, Mult: mult, Card: -1, Mod: -1})
 	}
 	for mi, mod := range mods {
@@ -398,7 +400,7 @@ func scoreHand(hand []Card, scoring []int, ht HandType, mods []*Modifier, ctx Sc
 			mod.after(mod, ctx)
 		}
 	}
-	return ev, chips * mult
+	return ev, multiplyScore(chips, mult)
 }
 
 func deltaLabel(dc, dm int) string {
@@ -412,7 +414,7 @@ func deltaLabel(dc, dm int) string {
 }
 
 func (m *model) finishPlay() {
-	m.score = m.baseScore + m.gain
+	m.score = addScore(m.baseScore, m.gain)
 	m.shownScore = m.score
 	for i := range m.hand {
 		c := m.hand[i]
@@ -588,4 +590,19 @@ func trainedBase(ht HandType, training int) handBase {
 	b.Chips += training * (5 + int(ht)*2)
 	b.Mult += training * (1 + int(ht)/4)
 	return b
+}
+
+func addScore(a, b int) int {
+	limit := int(^uint(0) >> 1)
+	if b > limit-a {
+		return limit
+	}
+	return a + b
+}
+func multiplyScore(a, b int) int {
+	limit := int(^uint(0) >> 1)
+	if a > 0 && b > limit/a {
+		return limit
+	}
+	return a * b
 }

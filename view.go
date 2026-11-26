@@ -46,6 +46,9 @@ const (
 )
 
 func commas(n int) string {
+	if n >= 1e15 || n <= -1e15 {
+		return strings.Replace(fmt.Sprintf("%.2g", float64(n)), "e+", "e", 1)
+	}
 	s := strconv.Itoa(n)
 	if n < 0 {
 		return "-" + commas(-n)
@@ -97,6 +100,10 @@ func (m *model) currentEvent() (Event, bool) {
 }
 
 func (m *model) View() string {
+	lipgloss.SetHasDarkBackground(m.prefs.Theme == 2 || (m.prefs.Theme == 0 && nativeDark))
+	if m.settings {
+		return m.settingsView()
+	}
 	if m.collection {
 		return m.collectionView()
 	}
@@ -118,7 +125,8 @@ func (m *model) View() string {
 			}
 		}
 		b.WriteString("\nBosses · ")
-		for i, boss := range m.bosses[:min(len(m.bosses), m.round/3+1)] {
+		for i := 0; i <= m.round/3; i++ {
+			boss := m.stageBoss(i)
 			fmt.Fprintf(&b, "%d %s  ", i+1, boss.Name)
 		}
 		b.WriteString("\n")
@@ -163,11 +171,14 @@ func (m *model) viewTable() string {
 		w,
 	)
 
+	if b := m.boss(); b.Rule != "" {
+		header += "\n " + sWarn.Render(b.Effect)
+	}
 	msg := ""
 	if m.msg != "" {
 		msg = " " + sWarn.Render(m.msg)
 	}
-	help := sDim.Render(" ↑↓ move · space select · p play · d discard · [ ] shift · s sort · c clear · v deck · i supplies · h hands · q quit")
+	help := sDim.Render(" ↑↓ move · space select · p play · d discard · [ ] shift · s sort · c clear · v deck · i supplies · h hands · , settings · q quit")
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, m.viewMods(w), msg, help)
 }
 
@@ -401,7 +412,7 @@ func (m *model) viewShop() string {
 	if i := m.upgradeOffer; i >= 0 {
 		fmt.Fprintf(&b, "\nu buy %s %d ($%d) · %s", upgradeLines[i].Name, m.upgrades[i]+1, m.upgradePrice(), upgradeLines[i].Desc)
 	}
-	b.WriteString("\n" + sDim.Render(fmt.Sprintf("↑↓ move · enter buy/sell · [ ] reorder owned · r reroll ($%d) · c next round · v deck · i supplies · h hands · q quit", m.rerollCharge())))
+	b.WriteString("\n" + sDim.Render(fmt.Sprintf("↑↓ move · enter buy/sell · [ ] reorder owned · r reroll ($%d) · c next round · v deck · i supplies · h hands · , settings · q quit", m.rerollCharge())))
 	return panel.Padding(1, 2).Render(b.String())
 }
 
@@ -418,6 +429,6 @@ func (m *model) viewEnd() string {
 	if m.phase == phaseWon {
 		b.WriteString("e continue endless\n")
 	}
-	b.WriteString("\n" + sDim.Render("n replay seed · v deck · i supplies · h hands · q quit"))
+	b.WriteString("\n" + sDim.Render("n replay seed · v deck · i supplies · h hands · , settings · q quit"))
 	return panel.Padding(1, 3).Render(b.String())
 }

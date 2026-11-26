@@ -28,4 +28,17 @@ Clear all 24 rounds across eight stages to win. You earn money for each cleared 
 | d | discard selected |
 | s | sort by rank or suit |
 | c | clear selection |
-| q | quit |
+| h / v / i | inspect run, deck, or supplies |
+| [ / ] | move the current card or owned shop modifier |
+| b / u in shop | open a pack or buy an upgrade |
+| , | configure animation speed, theme, and bell |
+| enter while scoring | finish the animation |
+| q | save and quit |
+
+Click a card to select it, or click the score panel to play. The scroll wheel moves the cursor.
+
+## Development
+
+Run `go test ./...` to check the rules and terminal controls. Use `go run . -simulate 3000 -seed audit` for a repeatable balance report with round reach and results by starting modifier. The simulated player buys affordable modifiers and plays for base hand value.
+
+Run `make release` to build macOS and Linux binaries for Intel and ARM64, plus Windows for x86-64, in `dist/`.

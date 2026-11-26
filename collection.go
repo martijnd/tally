@@ -19,7 +19,7 @@ func (m *model) collectionKey(k string) {
 	case "a", "esc":
 		m.collection = false
 	case "tab":
-		m.collectionGroup = (m.collectionGroup + 1) % 4
+		m.collectionGroup = (m.collectionGroup + 1) % 11
 		m.collectionPage = 0
 	case "right":
 		m.collectionPage++
@@ -32,7 +32,7 @@ func (m *model) collectionView() string {
 	if p == nil {
 		p = &profile{}
 	}
-	groups := []string{"Decks", "Modifiers", "Supplies", "Upgrades"}
+	groups := []string{"Decks", "Modifiers", "Supplies", "Upgrades", "Bosses", "Tags", "Hands", "Enhancements", "Editions", "Seals", "Challenges"}
 	var names []string
 	switch m.collectionGroup {
 	case 0:
@@ -46,6 +46,31 @@ func (m *model) collectionView() string {
 	case 2:
 		for _, v := range supplies() {
 			names = append(names, v.Name)
+		}
+	case 4:
+		for _, b := range regularBosses {
+			names = append(names, b.Name)
+		}
+		for _, b := range finalBosses {
+			names = append(names, b.Name)
+		}
+	case 5:
+		for _, t := range tags {
+			names = append(names, t.Name)
+		}
+	case 6:
+		for _, h := range handBases {
+			names = append(names, h.Name)
+		}
+	case 7:
+		names = enhancements[1:]
+	case 8:
+		names = editions[1:]
+	case 9:
+		names = seals[1:]
+	case 10:
+		for _, c := range challenges {
+			names = append(names, c.Name)
 		}
 	case 3:
 		for _, v := range upgradeLines {

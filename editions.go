@@ -9,7 +9,7 @@ func editionScore(edition, chips, mult int) (int, int) {
 	case 2:
 		mult += 6
 	case 3:
-		mult *= 2
+		mult = multiplyScore(mult, 2)
 	}
 	return chips, mult
 }

@@ -9,6 +9,7 @@ import (
 )
 
 type profile struct {
+	Prefs       preferences
 	Highest     [15]int
 	Wins        [15][8]int
 	Best, Round int
@@ -16,10 +17,12 @@ type profile struct {
 	Seen        map[string]bool
 }
 type input struct {
-	Key   *tea.KeyMsg `json:",omitempty"`
-	Ticks int         `json:",omitempty"`
+	Mouse *tea.MouseMsg `json:",omitempty"`
+	Key   *tea.KeyMsg   `json:",omitempty"`
+	Ticks int           `json:",omitempty"`
 }
 type recording struct {
+	Prefs       preferences
 	UnlockRound int
 	Seed        string
 	Opening     [15]int
@@ -55,14 +58,17 @@ func loadSession(path, seed string, fresh bool) (*session, error) {
 	}
 	r := s.data.Run
 	if fresh || r == nil {
-		r = &recording{Seed: seed, UnlockRound: s.data.Profile.Round, Opening: s.data.Profile.Highest}
+		r = &recording{Prefs: s.data.Profile.Prefs, Seed: seed, UnlockRound: s.data.Profile.Round, Opening: s.data.Profile.Highest}
 		s.data.Run = r
 	}
 	s.game = newModel(r.Seed)
+	s.game.prefs = r.Prefs
 	s.game.bestDifficulty = r.Opening
 	s.game.unlockRound = r.UnlockRound
 	for _, in := range r.Inputs {
-		if in.Key != nil {
+		if in.Mouse != nil {
+			s.game.Update(*in.Mouse)
+		} else if in.Key != nil {
 			s.game.Update(*in.Key)
 		} else {
 			for range in.Ticks {
@@ -98,7 +104,7 @@ func (s *session) persist() error {
 }
 func (s *session) Init() tea.Cmd {
 	if s.game.phase == phaseScoring {
-		return tick()
+		return s.game.tick()
 	}
 	return nil
 }
@@ -111,17 +117,27 @@ func (s *session) View() string {
 }
 func (s *session) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m := s.game
+	oldPrefs := m.prefs
 	before, counts := m.phase, m.timesPlayed
 	_, cmd := m.Update(msg)
 	r := s.data.Run
 	if (r == nil || before == phaseWon || before == phaseLost) && m.phase == phaseStart {
+		m.prefs = oldPrefs
 		m.unlockRound = s.data.Profile.Round
-		r = &recording{Seed: m.seed, UnlockRound: m.unlockRound, Opening: m.bestDifficulty}
+		r = &recording{Prefs: m.prefs, Seed: m.seed, UnlockRound: m.unlockRound, Opening: m.bestDifficulty}
 		s.data.Run = r
 	}
 	m.profile = &s.data.Profile
 	write := false
 	switch v := msg.(type) {
+	case tea.MouseMsg:
+		if v.Action != tea.MouseActionPress {
+			return s, cmd
+		}
+		write = true
+		if r != nil {
+			r.Inputs = append(r.Inputs, input{Mouse: &v})
+		}
 	case tea.KeyMsg:
 		write = true
 		if r != nil && v.String() != "q" && v.String() != "ctrl+c" && !(m.phase == phaseStart && (before == phaseWon || before == phaseLost)) {
@@ -133,7 +149,7 @@ func (s *session) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if r != nil {
 			n := len(r.Inputs)
-			if n == 0 || r.Inputs[n-1].Key != nil {
+			if n == 0 || r.Inputs[n-1].Key != nil || r.Inputs[n-1].Mouse != nil {
 				r.Inputs = append(r.Inputs, input{})
 			}
 			r.Inputs[len(r.Inputs)-1].Ticks++
@@ -146,15 +162,33 @@ func (s *session) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	for i, n := range m.timesPlayed {
 		if n > counts[i] {
 			p.Hands[i] += n - counts[i]
+			p.Seen[handBases[i].Name] = true
 		}
 	}
+	p.Prefs = m.prefs
 	p.Best = max(p.Best, m.bestGain)
 	if m.phase != phaseStart {
 		p.Round = max(p.Round, m.round+1)
 		p.Seen[startingDecks[m.deckID].Name] = true
+		if m.challengeID > 0 {
+			p.Seen[challenges[m.challengeID-1].Name] = true
+		}
+		if m.phase == phasePreview {
+			if m.round%3 == 2 {
+				p.Seen[m.boss().Name] = true
+			} else if !m.restriction("no skips") {
+				p.Seen[tags[m.skipTag()].Name] = true
+			}
+		}
+		for _, c := range m.stock {
+			p.Seen[enhancements[c.Enhancement]] = true
+			p.Seen[editions[c.Edition]] = true
+			p.Seen[seals[c.Seal]] = true
+		}
 	}
 	for _, mod := range m.mods {
 		p.Seen[mod.Name] = true
+		p.Seen[editions[mod.Edition]] = true
 	}
 	for _, it := range m.bag {
 		p.Seen[it.Name] = true

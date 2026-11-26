@@ -3,27 +3,21 @@ package main
 import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
-	"time"
 )
 
 type tickMsg struct{}
 
-func tick() tea.Cmd {
-	return tea.Tick(170*time.Millisecond, func(time.Time) tea.Msg { return tickMsg{} })
-}
-
 func (m *model) advanceScoring() tea.Cmd {
 	if m.shown < len(m.events) {
 		m.shown++
-		return tick()
+		return m.tick()
 	}
 	if m.step < countSteps {
 		m.step++
-		m.shownScore = m.baseScore + m.gain*m.step/countSteps
-		return tick()
+		m.shownScore = addScore(m.baseScore, m.gain/countSteps*m.step+(m.gain%countSteps)*m.step/countSteps)
+		return m.tick()
 	}
-	m.finishPlay()
-	return nil
+	return m.scoreDone()
 }
 
 func (m *model) Init() tea.Cmd { return nil }
@@ -35,6 +29,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}()
 	switch msg := msg.(type) {
+	case tea.MouseMsg:
+		return m, m.mouse(msg)
 	case tickMsg:
 		if m.phase == phaseScoring {
 			return m, m.advanceScoring()
@@ -43,6 +39,17 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		key := msg.String()
 		if key == "ctrl+c" || key == "q" {
 			return m, tea.Quit
+		}
+		if m.settings {
+			m.settingsKey(key)
+			return m, nil
+		}
+		if key == "," && m.phase != phaseScoring {
+			m.settings = true
+			return m, nil
+		}
+		if m.phase == phaseScoring && (key == "enter" || key == " ") {
+			return m, m.scoreDone()
 		}
 		if m.collection {
 			m.collectionKey(key)
@@ -156,7 +163,10 @@ func (m *model) updatePlay(key string) tea.Cmd {
 		m.msg = ""
 	case "p", "enter":
 		if m.play() {
-			return tick()
+			if m.prefs.Speed == 2 {
+				return m.scoreDone()
+			}
+			return m.tick()
 		}
 		return nil
 	case "d":

@@ -52,7 +52,7 @@ func expandedCatalog() []Modifier {
 				case 1:
 					return "+8 mult", c, mu + 8
 				case 2:
-					return "×2 mult", c, mu * 2
+					return "×2 mult", c, multiplyScore(mu, 2)
 				}
 				n := 2 * ctx.Previous
 				return fmt.Sprintf("+%d mult", n), c, mu + n

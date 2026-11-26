@@ -40,6 +40,7 @@ func (m *model) settingsView() string {
 	return panel.Padding(1, 2).Render(fmt.Sprintf("Settings\n\ns  Scoring speed   %s\nt  Colour theme    %s\nb  Big-score bell  %t\n\nesc close", speeds[m.prefs.Speed], themes[m.prefs.Theme], m.prefs.Bell))
 }
 func (m *model) scoreDone() tea.Cmd {
+	m.shown = len(m.events)
 	m.finishPlay()
 	if m.prefs.Bell && m.gain >= m.target() {
 		return func() tea.Msg { fmt.Fprint(os.Stderr, "\a"); return nil }

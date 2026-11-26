@@ -109,3 +109,18 @@ func TestSecretHands(t *testing.T) {
 		}
 	}
 }
+
+func TestFirstRunScoreExplanation(t *testing.T) {
+	m := newModel("first-run")
+	m.chooseStart()
+	m.startRound()
+	m.simulateSelection()
+	if preview := m.viewScore(); !strings.Contains(preview, "20 base + 28 card chips") || !strings.Contains(preview, "48 × 2 = 96 before effects") {
+		t.Fatal(preview)
+	}
+	m.play()
+	m.scoreDone()
+	if result := m.viewScore(); !strings.Contains(result, "= 96") {
+		t.Fatal(result)
+	}
+}

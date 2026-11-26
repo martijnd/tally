@@ -262,11 +262,18 @@ func (m *model) viewScore() string {
 			}
 		}
 	case len(sel) > 0:
-		ht, _ := evaluate(sel)
-		base := handBases[ht]
+		ht, scoring := evaluate(sel)
+		base := trainedBase(ht, m.levels[ht])
+		cardChips := 0
+		for _, i := range scoring {
+			if !m.boss().debuffs(sel[i]) {
+				cardChips += sel[i].Chips()
+			}
+		}
 		lines = append(lines,
 			sBold.Render(base.Name),
-			sChips.Render(strconv.Itoa(base.Chips))+sDim.Render(" chips  × ")+sMult.Render(strconv.Itoa(base.Mult))+sDim.Render(" mult"),
+			fmt.Sprintf("%d base + %d card chips", base.Chips, cardChips),
+			fmt.Sprintf("%d × %d = %s before effects", base.Chips+cardChips, base.Mult, commas(multiplyScore(base.Chips+cardChips, base.Mult))),
 			"",
 			sDim.Render("p to play · d to discard"),
 		)

@@ -82,12 +82,39 @@ func (m *model) inventoryKey(key string) {
 }
 func (m *model) inventoryView() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Consumables %d/%d · $%d\n", len(m.bag), m.bagSlots(), m.money)
-	for i, it := range m.bag {
-		fmt.Fprintf(&b, "%d  %s · %s card · %s\n", i+1, it.Name, it.cardFamily(), it.Description)
+	const w = 64
+	b.WriteString(spread(sAccent.Render("Consumables"), sGood.Render(fmt.Sprintf("$%d", m.money)), w))
+	fmt.Fprintf(&b, "\n\n%s  %d/%d\n", sBold.Render("Inventory"), len(m.bag), m.bagSlots())
+	if len(m.bag) == 0 {
+		b.WriteString(sDim.Render("  Empty · Find consumables in shops and packs.") + "\n")
 	}
-	if m.phase == phaseShop && m.stockItem != nil {
-		fmt.Fprintf(&b, "b buy %s ($3) · %s card · %s\n", m.stockItem.Name, m.stockItem.cardFamily(), m.stockItem.Description)
+	for i, it := range m.bag {
+		key := fmt.Sprintf("[%d]", i+1)
+		if i+1 == m.targetingSlot {
+			key = "›" + key
+		}
+		b.WriteString(spread(sAccent.Render(key)+" "+sBold.Render(it.Name), sDim.Render(it.cardFamily()), w))
+		b.WriteString("\n    " + sText.Width(w-4).Render(it.Description) + "\n")
+	}
+	if m.phase == phaseShop {
+		b.WriteString("\n" + sBold.Render("For sale") + "\n")
+		if it := m.stockItem; it != nil {
+			b.WriteString(spread(it.Name+" · "+it.cardFamily(), "$3", w))
+			b.WriteString("\n    " + sText.Width(w-4).Render(it.Description) + "\n")
+			switch {
+			case len(m.bag) >= m.bagSlots():
+				b.WriteString(sWarn.Render("Inventory full") + "\n")
+			case m.money < 3:
+				fmt.Fprintf(&b, "Need $%d more\n", 3-m.money)
+			default:
+				b.WriteString(sAccent.Render("b buy") + "\n")
+			}
+		} else {
+			b.WriteString(sDim.Render("  Sold out") + "\n")
+		}
+	}
+	if len(m.hand) > 0 {
+		fmt.Fprintf(&b, "\n%s  %d selected\n", sBold.Render("Hand"), len(m.selectedIdx()))
 	}
 	for i, c := range m.hand {
 		marker := " "
@@ -100,15 +127,22 @@ func (m *model) inventoryView() string {
 		}
 		fmt.Fprintf(&b, "%s [%s] %s\n", marker, map[bool]string{true: "x", false: " "}[m.selected[i]], label)
 	}
+	if m.msg != "" {
+		b.WriteString("\n" + sWarn.Render(m.msg) + "\n")
+	}
+	b.WriteString("\n")
 	if m.targetingSlot > 0 {
 		it := m.bag[m.targetingSlot-1]
 		lo, hi := it.targetCount()
-		fmt.Fprintf(&b, "%s · select %d to %d cards · w/s move · x select · e use · f close\n%s", it.Name, lo, hi, m.msg)
-		return panel.Padding(1, 2).Render(b.String())
+		fmt.Fprintf(&b, "%s · select %d to %d cards\nw/s move · x select · e use · f close", it.Name, lo, hi)
+		return panel.Padding(0, 2).Width(w + 4).Render(b.String())
 	}
 	if len(m.hand) > 0 {
 		b.WriteString("w/s target · space/x select · ")
 	}
-	fmt.Fprintf(&b, "number use · f close\n%s", m.msg)
-	return panel.Padding(1, 2).Render(b.String())
+	if len(m.bag) > 0 {
+		b.WriteString("number use · ")
+	}
+	b.WriteString("f close")
+	return panel.Padding(0, 2).Width(w + 4).Render(b.String())
 }

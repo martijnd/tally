@@ -171,7 +171,7 @@ func (m *model) viewTable() string {
 	if m.msg != "" {
 		msg = " " + sWarn.Render(m.msg)
 	}
-	help := sDim.Render(" w/s move · space select · a play · d discard · 1/2 shift · t sort · c clear · v deck · z collection · f consumables · g hands · , settings · ctrl+n new game · q quit")
+	help := sDim.Render(" w/s move · space select · a play · d discard · 1/2 shift · t sort · c clear · v deck · z collection · f consumables · g hands · , settings · ctrl+n new game · ctrl+c quit")
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, m.viewMods(w), msg, help)
 }
 
@@ -372,7 +372,7 @@ func (m *model) viewRoundWon() string {
 func (m *model) viewShop() string {
 	const w = 64
 	var b strings.Builder
-	b.WriteString(spread(sAccent.Render("SHOP")+sDim.Render(fmt.Sprintf("  before round %d", m.round+2)), sGood.Render(fmt.Sprintf("$%d", m.money)), w))
+	b.WriteString(spread(sAccent.Render("Shop")+sDim.Render(fmt.Sprintf("  before round %d", m.round+2)), sGood.Render(fmt.Sprintf("$%d", m.money)), w))
 	b.WriteString("\n\n")
 
 	row := func(i int, name, price, desc string, priceStyle lipgloss.Style) {
@@ -384,10 +384,10 @@ func (m *model) viewShop() string {
 		}
 		b.WriteString(spread(cur+nameStyle.Render(name), priceStyle.Render(price), w))
 		b.WriteString("\n")
-		b.WriteString("    " + sDim.Render(desc) + "\n")
+		b.WriteString("    " + sText.Width(w-4).Render(desc) + "\n")
 	}
 
-	b.WriteString(sDim.Render("JOKERS FOR SALE") + "\n")
+	b.WriteString(sBold.Render("Jokers for sale") + "\n")
 	if len(m.offers) == 0 {
 		b.WriteString(sDim.Render("  sold out, r to reroll") + "\n")
 	}
@@ -399,9 +399,9 @@ func (m *model) viewShop() string {
 		row(i, mod.Name, fmt.Sprintf("$%d", mod.Price), mod.Desc, ps)
 	}
 
-	b.WriteString("\n" + sDim.Render(fmt.Sprintf("JOKERS %d/%d", len(m.mods), m.modSlots())) + "\n")
+	b.WriteString("\n" + sBold.Render(fmt.Sprintf("Owned Jokers  %d/%d", len(m.mods), m.modSlots())) + "\n")
 	if len(m.mods) == 0 {
-		b.WriteString(sDim.Render("  nothing yet") + "\n")
+		b.WriteString(sDim.Render("  No Jokers owned") + "\n")
 	}
 	for i, mod := range m.mods {
 		name := mod.Name
@@ -414,17 +414,46 @@ func (m *model) viewShop() string {
 	if m.msg != "" {
 		b.WriteString("\n" + sWarn.Render(m.msg) + "\n")
 	}
-	if m.stockItem != nil {
-		fmt.Fprintf(&b, "\nf consumables · %s ($3)", m.stockItem.Name)
+	b.WriteString("\n" + sBold.Render("Shop counter"))
+	counter := func(key, name string, price int) {
+		style := sGood
+		if price > m.money {
+			style = sBad
+		}
+		b.WriteString("\n" + spread(sAccent.Render(key)+"  "+name, style.Render(fmt.Sprintf("$%d", price)), w))
 	}
 	if !m.packSold {
-		fmt.Fprintf(&b, "\nb open %s %s pack ($%d)", packSizes[m.packSize], packKinds[m.packKind], m.packPrice())
+		name := fmt.Sprintf("%s %s pack", packSizes[m.packSize], packKinds[m.packKind])
+		marker := " "
+		if m.packSelected() {
+			marker = "›"
+			name = sBold.Render(name)
+		}
+		counter(marker, name+"  "+sDim.Render("(b)"), m.packPrice())
+	}
+	if m.stockItem != nil {
+		counter("f", "Inspect "+m.stockItem.Name, 3)
 	}
 	if i := m.upgradeOffer; i >= 0 {
-		fmt.Fprintf(&b, "\nt redeem %s %d Voucher ($%d) · %s", upgradeLines[i].Name, m.upgrades[i]+1, m.upgradePrice(), upgradeLines[i].Desc)
+		counter("t", fmt.Sprintf("Redeem %s %d Voucher", upgradeLines[i].Name, m.upgrades[i]+1), m.upgradePrice())
+		b.WriteString("\n   " + sDim.Width(w-3).Render(upgradeLines[i].Desc))
 	}
-	b.WriteString("\n" + sDim.Render(fmt.Sprintf("w/s move · e buy/sell · 1/2 reorder owned · r reroll ($%d) · c next Blind · v deck · z collection · f consumables · g hands · , settings · ctrl+n new game · q quit", m.rerollCharge())))
-	return panel.Padding(1, 2).Render(b.String())
+	counter("r", "Reroll Jokers", m.rerollCharge())
+	action := "e buy"
+	if m.packSelected() {
+		action = "e open pack"
+	} else if m.shopCursor >= len(m.offers) {
+		action = "e sell · 1/2 reorder"
+	}
+	if m.shopRowCount() > 0 {
+		b.WriteString("\n\n" + sText.Render("w/s move · "+action+" · "))
+	} else {
+		b.WriteString("\n\n")
+	}
+	b.WriteString(sAccent.Render("c next Blind"))
+	b.WriteString("\n" + sDim.Render("v deck · z collection · f consumables · g hands"))
+	b.WriteString("\n" + sDim.Render(", settings · ctrl+n new game · ctrl+c quit"))
+	return panel.Padding(0, 2).Width(w + 4).Render(b.String())
 }
 
 func (m *model) viewEnd() string {
@@ -440,6 +469,6 @@ func (m *model) viewEnd() string {
 	if m.phase == phaseWon {
 		b.WriteString("e continue endless\n")
 	}
-	b.WriteString("\n" + sDim.Render("n replay seed · v deck · z collection · f consumables · g hands · , settings · ctrl+n new game · q quit"))
+	b.WriteString("\n" + sDim.Render("n replay seed · v deck · z collection · f consumables · g hands · , settings · ctrl+n new game · ctrl+c quit"))
 	return panel.Padding(1, 3).Render(b.String())
 }

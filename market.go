@@ -107,6 +107,7 @@ func (m *model) openPack() {
 		m.freePacks--
 	}
 	m.packSold = true
+	m.clampShopCursor()
 	m.packChoices = nil
 	m.packPicks = 1
 	count := 3
@@ -201,7 +202,28 @@ func (m *model) pickPack(key string) {
 		m.packChoices = nil
 	}
 }
+
+var celestialFrames = [...]string{
+	"          ·          ",
+	"       ·  ✧  ·       ",
+	"    ·  ✧  ★  ✧  ·    ",
+	" ✧  ·  ★  ☾  ★  ·  ✧ ",
+}
+var buffoonFrames = [...]string{
+	"        [♧]        ",
+	"      [♧][♧]       ",
+	"    [♧] [♧] [♧]    ",
+	"  [♧]   [★]   [♧]  ",
+}
+
 func (m *model) packView() string {
+	if m.packFrame > 0 {
+		art := sChips.Render(celestialFrames[m.packFrame-1])
+		if m.packKind == 0 {
+			art = sMult.Render(buffoonFrames[m.packFrame-1])
+		}
+		return panel.Padding(1, 3).Render(sBold.Render("Opening "+packKinds[m.packKind]+" pack") + "\n\n" + art + "\n\n" + sDim.Render("e reveal"))
+	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s · choose %d · esc leave\n", packKinds[m.packKind], m.packPicks)
 	for i, p := range m.packChoices {

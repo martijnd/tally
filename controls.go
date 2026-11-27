@@ -3,9 +3,23 @@ package main
 import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
+	"time"
 )
 
 type tickMsg struct{}
+
+type packTick struct {
+	first *packChoice
+}
+
+func (m *model) packTick() tea.Cmd {
+	msg := packTick{&m.packChoices[0]}
+	delay := 160 * time.Millisecond
+	if m.prefs.Speed == 1 {
+		delay = 40 * time.Millisecond
+	}
+	return tea.Tick(delay, func(time.Time) tea.Msg { return msg })
+}
 
 func (m *model) advanceScoring() tea.Cmd {
 	if m.shown < len(m.events) {
@@ -81,13 +95,22 @@ func (m *model) updateResolved(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}()
 	switch msg := msg.(type) {
+	case packTick:
+		if m.packFrame > 0 && len(m.packChoices) > 0 && msg.first == &m.packChoices[0] {
+			m.packFrame++
+			if m.packFrame > len(celestialFrames) {
+				m.packFrame = 0
+			} else {
+				return m, m.packTick()
+			}
+		}
 	case tickMsg:
 		if m.phase == phaseScoring {
 			return m, m.advanceScoring()
 		}
 	case tea.KeyMsg:
 		key := msg.String()
-		if key == "ctrl+c" || key == "q" {
+		if key == "ctrl+c" {
 			return m, tea.Quit
 		}
 		if m.settings {
@@ -110,6 +133,7 @@ func (m *model) updateResolved(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if len(m.packChoices) > 0 {
+			m.packFrame = 0
 			m.pickPack(key)
 			return m, nil
 		}
@@ -167,6 +191,10 @@ func (m *model) updateResolved(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case phaseShop:
 			m.updateShop(key)
+			if len(m.packChoices) > 0 && (m.packKind == 0 || m.packKind == 2) && m.prefs.Speed != 2 {
+				m.packFrame = 1
+				return m, m.packTick()
+			}
 		case phaseLost, phaseWon:
 			if key == "e" && m.phase == phaseWon {
 				m.openShop()
@@ -256,11 +284,11 @@ func (m *model) updateShop(key string) {
 			m.shopCursor--
 		}
 	case "down", "j":
-		if m.shopCursor < len(m.offers)+len(m.mods)-1 {
+		if m.shopCursor < m.shopRowCount()-1 {
 			m.shopCursor++
 		}
 	case "enter", " ":
-		if len(m.offers)+len(m.mods) > 0 {
+		if m.shopRowCount() > 0 {
 			m.shopSelect()
 		}
 	case "r":

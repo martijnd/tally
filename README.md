@@ -38,7 +38,7 @@ Clear all eight Antes, each with a Small Blind, Big Blind, and Boss Blind, to wi
 | e | confirm a menu choice or shop purchase |
 | z | open or close the Collection |
 | Ctrl+N twice | start a new run and keep your profile |
-| q | save and quit |
+| Ctrl+C | save and quit |
 
 Use the keyboard to play. Press `x` to select a card and `a` to play the selected hand.
 

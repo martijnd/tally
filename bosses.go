@@ -101,7 +101,7 @@ func (m *model) preview() string {
 		t := tags[m.skipTag()]
 		description += "s skip · " + t.Name + " · " + t.Desc
 	}
-	return panel.Padding(1, 2).Render(description + m.tagSummary() + "\n\ne begin · g hands · q quit")
+	return panel.Padding(1, 2).Render(description + m.tagSummary() + "\n\ne begin · g hands · ctrl+c quit")
 }
 
 var roundNames = []string{"Small Blind", "Big Blind", "Boss Blind"}

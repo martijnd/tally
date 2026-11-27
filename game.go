@@ -75,6 +75,7 @@ type model struct {
 	upgrades                                     [len(upgradeLines)]int
 	upgradeOffer, packKind, packSize, packPicks  int
 	packSold                                     bool
+	packFrame                                    int
 	packChoices                                  []packChoice
 	packRNG                                      *rand.Rand
 	viewingDeck, remainingDeck                   bool
@@ -677,7 +678,23 @@ func (m *model) rollOffers() {
 
 func sellPrice(mod *Modifier) int { return max(mod.Price/2, 1) + mod.ResaleGrowth }
 
+func (m *model) shopRowCount() int {
+	n := len(m.offers) + len(m.mods)
+	if !m.packSold {
+		n++
+	}
+	return n
+}
+
+func (m *model) packSelected() bool {
+	return !m.packSold && m.shopCursor == len(m.offers)+len(m.mods)
+}
+
 func (m *model) shopSelect() {
+	if m.packSelected() {
+		m.openPack()
+		return
+	}
 	if m.shopCursor < len(m.offers) {
 		mod := m.offers[m.shopCursor]
 		switch {
@@ -711,7 +728,7 @@ func (m *model) shopSelect() {
 }
 
 func (m *model) clampShopCursor() {
-	n := len(m.offers) + len(m.mods)
+	n := m.shopRowCount()
 	if m.shopCursor >= n {
 		m.shopCursor = n - 1
 	}

@@ -78,6 +78,7 @@ func loadSession(path, seed string, fresh bool) (*session, error) {
 			}
 		}
 	}
+	s.game.packFrame = 0 // Resume directly at the choices after replay.
 	s.game.profile = &s.data.Profile
 	return s, nil
 }
@@ -167,7 +168,7 @@ func (s *session) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch v := msg.(type) {
 	case tea.KeyMsg:
 		write = true
-		if r != nil && v.String() != "q" && v.String() != "ctrl+c" && !(m.phase == phaseStart && (before == phaseWon || before == phaseLost)) {
+		if r != nil && v.String() != "ctrl+c" && !(m.phase == phaseStart && (before == phaseWon || before == phaseLost)) {
 			r.Inputs = append(r.Inputs, input{Key: &v})
 		}
 	case tickMsg:
